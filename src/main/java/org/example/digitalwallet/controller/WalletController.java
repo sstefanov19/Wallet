@@ -1,13 +1,13 @@
 package org.example.digitalwallet.controller;
 
+import org.example.digitalwallet.dto.DepositRequest;
 import org.example.digitalwallet.dto.WalletRequest;
 import org.example.digitalwallet.service.WalletService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
 
 @RestController
 @RequestMapping("/api/v1/wallet")
@@ -24,6 +24,13 @@ public class WalletController {
         walletService.createWallet(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body("Created new wallet");
+    }
+
+    @PutMapping("/deposit")
+    public ResponseEntity<String> depositToWallet(@RequestBody DepositRequest request) {
+        walletService.depositToWallet(request);
+
+        return ResponseEntity.status(HttpStatus.OK).body("Deposit of " + request.getDepositAmount() +  " was successful ");
     }
 
 }

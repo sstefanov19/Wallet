@@ -22,6 +22,7 @@ public class UserRepository {
         String sql = "SELECT * FROM users WHERE username = ?";
 
         List<User> users = jdbcTemplate.query(sql ,  (rs, rowNum) -> User.builder()
+                        .id(rs.getLong("id"))
                 .email(rs.getString("email"))
                 .username(rs.getString("username"))
                 .password(rs.getString("password"))
