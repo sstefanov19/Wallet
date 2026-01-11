@@ -3,6 +3,7 @@ package org.example.digitalwallet.service;
 import lombok.AllArgsConstructor;
 import org.example.digitalwallet.dto.LoginRequest;
 import org.example.digitalwallet.dto.UserRequest;
+import org.example.digitalwallet.exception.UserAlreadyExistsException;
 import org.example.digitalwallet.model.User;
 import org.example.digitalwallet.repository.UserRepository;
 import org.example.digitalwallet.util.JwtUtil;
@@ -30,8 +31,7 @@ public class UserService {
         User existingUser = userRepository.getUserByUsername(request.getUsername());
 
         if(existingUser != null) {
-            // todo (change with custom exception later)
-            throw new RuntimeException("User exists already!");
+            throw new UserAlreadyExistsException("User exists already!");
         }
 
         User user = User.builder().

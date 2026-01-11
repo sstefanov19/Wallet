@@ -2,6 +2,7 @@ package org.example.digitalwallet.repository;
 
 import org.example.digitalwallet.model.MembershipStatus;
 import org.example.digitalwallet.model.User;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -30,6 +31,16 @@ public class UserRepository {
         );
 
         return users.isEmpty() ? null : users.getFirst();
+    }
+
+    public Long getUserIdByName(String username) {
+        String sql = "SELECT id FROM users WHERE username = ?";
+
+        try {
+            return jdbcTemplate.queryForObject(sql , Long.class , username);
+        }catch(EmptyResultDataAccessException e) {
+            return null;
+        }
     }
 
     public void saveUser(User user) {
