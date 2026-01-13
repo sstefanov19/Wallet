@@ -11,24 +11,23 @@ import java.util.List;
 @Repository
 public class UserRepository {
 
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
 
     public UserRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
-
 
     public User getUserByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
 
         List<User> users = jdbcTemplate.query(sql ,  (rs, rowNum) -> User.builder()
                         .id(rs.getLong("id"))
-                .email(rs.getString("email"))
-                .username(rs.getString("username"))
-                .password(rs.getString("password"))
-                .membershipStatus(MembershipStatus.valueOf(rs.getString("subscription_status")))
-                .build(),
-                username
+                        .email(rs.getString("email"))
+                        .username(rs.getString("username"))
+                        .password(rs.getString("password"))
+                        .membershipStatus(MembershipStatus.valueOf(rs.getString("subscription_status")))
+                        .build(),
+                        username
         );
 
         return users.isEmpty() ? null : users.getFirst();
