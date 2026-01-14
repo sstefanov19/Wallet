@@ -4,10 +4,8 @@ import org.example.digitalwallet.dto.TransferRequest;
 import org.example.digitalwallet.dto.TransferResponse;
 import org.example.digitalwallet.exception.WalletNotFoundException;
 import org.example.digitalwallet.model.Transfer;
-import org.example.digitalwallet.model.User;
 import org.example.digitalwallet.model.Wallet;
 import org.example.digitalwallet.repository.TransferRepository;
-import org.example.digitalwallet.repository.UserRepository;
 import org.example.digitalwallet.repository.WalletRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,9 +29,15 @@ public class TransferService {
         Wallet fromWallet = walletRepository.findById(transferRequest.getFromWallet());
         Wallet toWallet = walletRepository.findById(transferRequest.getToWallet());
 
-        validateTransfer(fromWallet, toWallet , transferRequest);
+        validateTransfer(fromWallet, toWallet, transferRequest);
 
-        walletRepository.deductFunds(transferRequest.getTransferAmount(), fromWallet.getId());
+        boolean deducted = walletRepository.deductFunds(
+                transferRequest.getTransferAmount(), fromWallet.getId());
+
+        if (!deducted) {
+            throw new IllegalArgumentException("Insufficient funds: wallet balance is less than transfer amount");
+        }
+
         walletRepository.addFunds(transferRequest.getTransferAmount(), toWallet.getId());
 
         Transfer transfer = Transfer.builder()
@@ -68,11 +72,6 @@ public class TransferService {
         if(!toWallet.getCurrency().equals(request.getCurrency())) {
             throw new IllegalArgumentException("Currency mismatch: recipient wallet currency does not match transfer currency");
         }
-
-        if(fromWallet.getBalance().compareTo(request.getTransferAmount()) < 0) {
-            throw new IllegalArgumentException("Insufficient funds: wallet balance is less than transfer amount");
-        }
-
     }
 
 

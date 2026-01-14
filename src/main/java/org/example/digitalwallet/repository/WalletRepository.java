@@ -2,6 +2,8 @@ package org.example.digitalwallet.repository;
 
 import org.example.digitalwallet.model.Wallet;
 import org.example.digitalwallet.model.WalletCurrency;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -11,6 +13,9 @@ import java.util.List;
 @Repository
 public class WalletRepository {
 
+    private static final String WALLET_CACHE = "wallets";
+    private static final String WALLET_BY_USER_CACHE = "walletsByUser";
+
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -18,6 +23,7 @@ public class WalletRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    @Cacheable(value = WALLET_CACHE, key = "#id", unless = "#result == null")
     public Wallet findById(Long id) {
         String sql = "SELECT id, user_id, currency, balance FROM wallet WHERE id = ?";
 
@@ -41,6 +47,7 @@ public class WalletRepository {
     }
 
 
+    @CacheEvict(value = WALLET_BY_USER_CACHE, key = "#wallet.userId")
     public void createWallet(Wallet wallet) {
         String sql = """
             INSERT INTO wallet (user_id, currency,balance ,create_time)
@@ -54,12 +61,14 @@ public class WalletRepository {
                 wallet.getCreatedDate());
     }
 
+    @Cacheable(value = WALLET_BY_USER_CACHE, key = "#user_id", unless = "#result == null")
     public Wallet getWalletByUserId(Long user_id) {
         String sql = "SELECT id , user_id, currency , balance FROM wallet where user_id = ?";
 
         return getWallet(user_id, sql);
     }
 
+    @CacheEvict(value = WALLET_CACHE, key = "#wallet_id")
     public void addFunds(BigDecimal deposit, Long wallet_id) {
 
         String sql = """
@@ -73,15 +82,17 @@ public class WalletRepository {
 
     }
 
-    public void deductFunds(BigDecimal amount, Long wallet_id) {
+    @CacheEvict(value = WALLET_CACHE, key = "#wallet_id")
+    public boolean deductFunds(BigDecimal amount, Long wallet_id) {
 
         String sql = """
                 UPDATE wallet
                 SET balance = balance - ?
-                WHERE id = ?
+                WHERE id = ? AND balance >= ?
                 """;
 
-        jdbcTemplate.update(sql, amount, wallet_id);
+        int rowsEffected = jdbcTemplate.update(sql, amount, wallet_id, amount);
+        return rowsEffected > 0;
 
     }
 
