@@ -30,9 +30,13 @@ public class ApplicationConfig {
                 .authorizeHttpRequests(auth -> auth
 
                         .requestMatchers(
+                                "/v3/api-docs/**",
                                 "/register",
                                 "/login",
-                                "/api/v1/auth/**"
+                                "/api/v1/auth/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-resources/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
