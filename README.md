@@ -12,3 +12,6 @@ Database Design
 <img width="680" height="588" alt="image" src="https://github.com/user-attachments/assets/a73318c5-61ba-4f25-b5ff-bc94a862ebf1" />
 
 
+Test coverage on key areas such as repository , service and controller layer
+
+<img width="516" height="150" alt="image" src="https://github.com/user-attachments/assets/b2e90f95-d54d-401a-9861-b00e8ee182da" />
