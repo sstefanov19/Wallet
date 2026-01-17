@@ -13,6 +13,8 @@ import java.time.LocalDateTime;
 @Setter
 public class TransferResponse {
 
+    private Long id;
+
     private Long fromWallet;
 
     private Long toWallet;

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class TransferService {
@@ -53,13 +54,7 @@ public class TransferService {
 
         transferRepository.save(transfer);
 
-        return TransferResponse.builder()
-                .fromWallet(transfer.getFromWallet())
-                .toWallet(transfer.getToWallet())
-                .currency(transfer.getCurrency())
-                .transferAmount(transfer.getTransferAmount())
-                .transferDate(transfer.getTransferDate())
-                .build();
+        return transferResponseMapper(transfer);
     }
 
     private void validateTransfer(Wallet fromWallet, Wallet toWallet, TransferRequest request) {
@@ -77,6 +72,27 @@ public class TransferService {
     }
 
 
+    public List<TransferResponse> getTransferHistory(Long cursor,Integer limit) {
+        List<Transfer> getTransfers = transferRepository.findTransfers(cursor, limit);
+
+        if(getTransfers == null) {
+            throw new RuntimeException("No transfers available for user");
+        }
+
+        return getTransfers.stream().map(this::transferResponseMapper).toList();
+    }
+
+
+    private TransferResponse transferResponseMapper(Transfer transfer) {
+        return TransferResponse.builder()
+                .id(transfer.getId())
+                .fromWallet(transfer.getFromWallet())
+                .toWallet(transfer.getToWallet())
+                .currency(transfer.getCurrency())
+                .transferAmount(transfer.getTransferAmount())
+                .transferDate(transfer.getTransferDate())
+                .build();
+    }
 
     public TransferResponse fallbackSaveTransfer(TransferRequest transferRequest, Throwable throwable) {
         throw new RateLimitExceededException("Too many requests. Try again later!");

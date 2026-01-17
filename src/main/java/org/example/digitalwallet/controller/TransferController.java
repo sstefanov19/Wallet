@@ -1,14 +1,15 @@
 package org.example.digitalwallet.controller;
 
+import lombok.Getter;
+import org.example.digitalwallet.dto.PagedResponse;
 import org.example.digitalwallet.dto.TransferRequest;
 import org.example.digitalwallet.dto.TransferResponse;
 import org.example.digitalwallet.service.TransferService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/transfer")
@@ -26,6 +27,19 @@ public class TransferController {
         TransferResponse response = transferService.saveTransfer(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<PagedResponse<TransferResponse>> getTransfers(
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "10") int limit) {
+
+        List<TransferResponse> transfers = transferService.getTransferHistory(cursor, limit);
+
+        Long nextCursor = transfers.isEmpty() ? null :
+                transfers.getLast().getId();
+
+        return ResponseEntity.ok(new PagedResponse<>(transfers, nextCursor));
     }
 
 }
