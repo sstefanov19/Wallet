@@ -1,5 +1,10 @@
 package org.example.digitalwallet.model;
 
 public enum WalletCurrency {
-    EUR
+    EUR,
+    USD,
+    GBP,
+    JPY,
+    PLN,
+    CHF
 }

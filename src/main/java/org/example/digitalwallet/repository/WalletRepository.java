@@ -30,6 +30,12 @@ public class WalletRepository {
         return getWallet(id, sql);
     }
 
+    public Wallet findByIdForUpdate(Long id) {
+        String sql = "SELECT id, user_id, currency, balance FROM wallet WHERE id = ? FOR UPDATE";
+
+        return getWallet(id, sql);
+    }
+
     private Wallet getWallet(Long id, String sql) {
         List<Wallet> wallets = jdbcTemplate.query(sql , (rs , rowNum) -> Wallet.builder()
                         .id(rs.getLong("id"))
@@ -96,5 +102,35 @@ public class WalletRepository {
 
     }
 
+    @CacheEvict(value = WALLET_CACHE, allEntries = true)
+    public boolean executeTransfer(Long fromWalletId, Long toWalletId, BigDecimal amount) {
+        // Lock in consistent order to prevent deadlocks
+        Long firstId = Math.min(fromWalletId, toWalletId);
+        Long secondId = Math.max(fromWalletId, toWalletId);
+
+        String sql = """
+                WITH locked AS (
+                    SELECT id FROM wallet WHERE id IN (?, ?) ORDER BY id FOR UPDATE
+                ),
+                deduct AS (
+                    UPDATE wallet SET balance = balance - ?
+                    WHERE id = ? AND balance >= ?
+                    RETURNING id
+                ),
+                credit AS (
+                    UPDATE wallet SET balance = balance + ?
+                    WHERE id = ? AND EXISTS (SELECT 1 FROM deduct)
+                    RETURNING id
+                )
+                SELECT EXISTS (SELECT 1 FROM credit) as success
+                """;
+
+        Boolean success = jdbcTemplate.queryForObject(sql, Boolean.class,
+                firstId, secondId,
+                amount, fromWalletId, amount,
+                amount, toWalletId);
+
+        return Boolean.TRUE.equals(success);
+    }
 
 }

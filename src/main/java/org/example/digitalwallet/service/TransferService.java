@@ -26,28 +26,27 @@ public class TransferService {
 
     @Transactional
     public TransferResponse saveTransfer(TransferRequest transferRequest) {
-        Wallet fromWallet = walletRepository.findById(transferRequest.getFromWallet());
-        Wallet toWallet = walletRepository.findById(transferRequest.getToWallet());
+        Long fromWalletId = transferRequest.getFromWallet();
+        Long toWalletId = transferRequest.getToWallet();
 
+        Wallet fromWallet = walletRepository.findById(fromWalletId);
+        Wallet toWallet = walletRepository.findById(toWalletId);
         validateTransfer(fromWallet, toWallet, transferRequest);
 
-        boolean deducted = walletRepository.deductFunds(
-                transferRequest.getTransferAmount(), fromWallet.getId());
+        boolean success = walletRepository.executeTransfer(
+                fromWalletId, toWalletId, transferRequest.getTransferAmount());
 
-        if (!deducted) {
+        if (!success) {
             throw new IllegalArgumentException("Insufficient funds: wallet balance is less than transfer amount");
         }
 
-        walletRepository.addFunds(transferRequest.getTransferAmount(), toWallet.getId());
-
         Transfer transfer = Transfer.builder()
-                .fromWallet(transferRequest.getFromWallet())
-                .toWallet(transferRequest.getToWallet())
+                .fromWallet(fromWalletId)
+                .toWallet(toWalletId)
                 .currency(transferRequest.getCurrency())
                 .transferAmount(transferRequest.getTransferAmount())
                 .transferDate(LocalDateTime.now())
                 .build();
-
 
         transferRepository.save(transfer);
 

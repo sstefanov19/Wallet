@@ -3,6 +3,7 @@ package org.example.digitalwallet.service;
 import lombok.AllArgsConstructor;
 import org.example.digitalwallet.dto.DepositRequest;
 import org.example.digitalwallet.dto.WalletRequest;
+import org.example.digitalwallet.dto.WalletResponse;
 import org.example.digitalwallet.exception.UserNotAuthenticatedException;
 import org.example.digitalwallet.model.User;
 import org.example.digitalwallet.model.Wallet;
@@ -11,6 +12,7 @@ import org.example.digitalwallet.repository.UserRepository;
 import org.example.digitalwallet.repository.WalletRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,6 +89,23 @@ public class WalletService {
         );
 
         }
+    }
+
+    public WalletResponse getWalletById(Long id) {
+        Wallet foundWallet = walletRepository.findById(id);
+
+        if(foundWallet == null) {
+            throw new RuntimeException("Wallet wasn't found!");
+        }
+
+        return WalletResponse.builder()
+                .id(foundWallet.getId())
+                .userId(foundWallet.getUserId())
+                .currency(foundWallet.getCurrency())
+                .balance(foundWallet.getBalance())
+                .createdDate(foundWallet.getCreatedDate())
+                .build();
+
     }
 
 
