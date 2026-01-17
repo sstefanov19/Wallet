@@ -1,6 +1,7 @@
 package org.example.digitalwallet.controller;
 
 import org.example.digitalwallet.dto.ErrorResponse;
+import org.example.digitalwallet.exception.RateLimitExceededException;
 import org.example.digitalwallet.exception.UserAlreadyExistsException;
 import org.example.digitalwallet.exception.UserNotAuthenticatedException;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,16 @@ public class GlobalExceptionHandler {
                 ex.getMessage()
         );
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimitExceeded(RateLimitExceededException ex) {
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.TOO_MANY_REQUESTS.value(),
+                "Too many requests. Please try again later."
+        );
+        return new ResponseEntity<>(error, HttpStatus.TOO_MANY_REQUESTS);
     }
 
 }

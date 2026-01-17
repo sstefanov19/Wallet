@@ -1,7 +1,9 @@
 package org.example.digitalwallet.service;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import org.example.digitalwallet.dto.TransferRequest;
 import org.example.digitalwallet.dto.TransferResponse;
+import org.example.digitalwallet.exception.RateLimitExceededException;
 import org.example.digitalwallet.exception.WalletNotFoundException;
 import org.example.digitalwallet.model.Transfer;
 import org.example.digitalwallet.model.Wallet;
@@ -24,6 +26,7 @@ public class TransferService {
         this.walletRepository = walletRepository;
     }
 
+    @RateLimiter(name = "saveTransferRateLimiter" , fallbackMethod = "fallbackSaveTransfer")
     @Transactional
     public TransferResponse saveTransfer(TransferRequest transferRequest) {
         Long fromWalletId = transferRequest.getFromWallet();
@@ -74,4 +77,8 @@ public class TransferService {
     }
 
 
+
+    public TransferResponse fallbackSaveTransfer(TransferRequest transferRequest, Throwable throwable) {
+        throw new RateLimitExceededException("Too many requests. Try again later!");
+    }
 }
