@@ -1,8 +1,10 @@
 package org.example.digitalwallet.service;
 
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import lombok.AllArgsConstructor;
 import org.example.digitalwallet.dto.LoginRequest;
 import org.example.digitalwallet.dto.UserRequest;
+import org.example.digitalwallet.exception.RateLimitExceededException;
 import org.example.digitalwallet.exception.UserAlreadyExistsException;
 import org.example.digitalwallet.model.User;
 import org.example.digitalwallet.repository.UserRepository;
@@ -45,6 +47,7 @@ public class UserService {
         userRepository.saveUser(user);
     }
 
+    @RateLimiter(name = "loginRateLimiter" , fallbackMethod = "loggingFallBack")
     public String login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -56,5 +59,9 @@ public class UserService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         return jwtUtil.generateToken(request.getUsername());
 
+    }
+
+    private void loggingFallBack(LoginRequest request , Throwable t) {
+        throw new RateLimitExceededException("Rate limit for logging in exceeded try again later");
     }
 }

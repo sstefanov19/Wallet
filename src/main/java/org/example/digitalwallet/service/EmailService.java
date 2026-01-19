@@ -2,6 +2,7 @@ package org.example.digitalwallet.service;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,6 +14,7 @@ public class EmailService {
         this.emailSender = emailSender;
     }
 
+    @Async
     public void sendWalletCreationEmail(String to , String username, String currency , String balance) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
@@ -24,6 +26,7 @@ public class EmailService {
         emailSender.send(message);
     }
 
+    @Async
     public void sendEmailOnDeposit(String to , String username, String currency , String deposit , String balance) {
         SimpleMailMessage message = new SimpleMailMessage();
 

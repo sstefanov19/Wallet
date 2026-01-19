@@ -1,6 +1,6 @@
 package org.example.digitalwallet.controller;
 
-import lombok.Getter;
+import jakarta.validation.Valid;
 import org.example.digitalwallet.dto.DepositRequest;
 import org.example.digitalwallet.dto.WalletRequest;
 import org.example.digitalwallet.dto.WalletResponse;
@@ -20,21 +20,21 @@ public class WalletController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<String> createWallet(@RequestBody  WalletRequest request) {
+    public ResponseEntity<String> createWallet(@Valid @RequestBody WalletRequest request) {
         walletService.createWallet(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body("Created new wallet");
     }
 
     @PutMapping("/deposit")
-    public ResponseEntity<String> depositToWallet(@RequestBody DepositRequest request) {
+    public ResponseEntity<String> depositToWallet(@Valid @RequestBody DepositRequest request) {
         walletService.depositToWallet(request);
 
         return ResponseEntity.status(HttpStatus.OK).body("Deposit of " + request.getDepositAmount() +  " was successful ");
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<WalletResponse> getWalletById(@PathVariable Long id) {
+    public ResponseEntity<WalletResponse> getWalletById(@Valid @PathVariable Long id) {
         WalletResponse response = walletService.getWalletById(id);
 
         return ResponseEntity.status(HttpStatus.OK).body(response);

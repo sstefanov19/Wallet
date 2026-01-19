@@ -1,5 +1,6 @@
 package org.example.digitalwallet.controller;
 
+import jakarta.validation.Valid;
 import org.example.digitalwallet.dto.LoginRequest;
 import org.example.digitalwallet.dto.UserRequest;
 import org.example.digitalwallet.service.UserService;
@@ -22,14 +23,14 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody  UserRequest request) {
+    public ResponseEntity<String> register(@Valid @RequestBody UserRequest request) {
         userService.register(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully");
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<String> login(@Valid @RequestBody LoginRequest request) {
         String token = userService.login(request);
 
         return ResponseEntity.status(HttpStatus.OK).body(token);

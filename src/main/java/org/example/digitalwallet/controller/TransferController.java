@@ -1,6 +1,6 @@
 package org.example.digitalwallet.controller;
 
-import lombok.Getter;
+import jakarta.validation.Valid;
 import org.example.digitalwallet.dto.PagedResponse;
 import org.example.digitalwallet.dto.TransferRequest;
 import org.example.digitalwallet.dto.TransferResponse;
@@ -23,7 +23,7 @@ public class TransferController {
     }
 
     @PostMapping
-    public ResponseEntity<TransferResponse> saveTransfer(@RequestBody TransferRequest request) {
+    public ResponseEntity<TransferResponse> saveTransfer(@Valid @RequestBody TransferRequest request) {
         TransferResponse response = transferService.saveTransfer(request);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

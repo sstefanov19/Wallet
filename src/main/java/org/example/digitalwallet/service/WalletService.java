@@ -12,7 +12,6 @@ import org.example.digitalwallet.repository.UserRepository;
 import org.example.digitalwallet.repository.WalletRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,10 +91,21 @@ public class WalletService {
     }
 
     public WalletResponse getWalletById(Long id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null) {
+            throw new UserNotAuthenticatedException("User was not authenticated! Try logging in");
+        }
+
+        User user = userRepository.getUserByUsername(authentication.getName());
         Wallet foundWallet = walletRepository.findById(id);
 
-        if(foundWallet == null) {
+        if (foundWallet == null) {
             throw new RuntimeException("Wallet wasn't found!");
+        }
+
+        if (!foundWallet.getUserId().equals(user.getId())) {
+            throw new SecurityException("You don't have access to this wallet");
         }
 
         return WalletResponse.builder()
