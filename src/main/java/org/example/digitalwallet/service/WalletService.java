@@ -32,8 +32,8 @@ public class WalletService {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        WalletCurrency currency = request.getCurrency() != null
-                ? request.getCurrency()
+        WalletCurrency currency = request.currency() != null
+                ? request.currency()
                 : WalletCurrency.EUR;
 
         if(authentication == null) {
@@ -45,7 +45,7 @@ public class WalletService {
         Wallet wallet = Wallet.builder()
                 .userId(user.getId())
                 .currency(currency)
-                .balance(request.getBalance())
+                .balance(request.balance())
                 .createdDate(LocalDateTime.now())
                 .build();
 
@@ -74,16 +74,16 @@ public class WalletService {
 
         Wallet wallet = walletRepository.getWalletByUserId(user.getId());
 
-        walletRepository.addFunds(request.getDepositAmount(), wallet.getId());
+        walletRepository.addFunds(request.depositAmount(), wallet.getId());
 
-        BigDecimal newBalance = wallet.getBalance().add(request.getDepositAmount());
+        BigDecimal newBalance = wallet.getBalance().add(request.depositAmount());
 
         if(user.getEmail() != null) {
         emailService.sendEmailOnDeposit(
                 user.getEmail(),
                 user.getUsername(),
                 wallet.getCurrency().name(),
-                request.getDepositAmount().toString(),
+                request.depositAmount().toString(),
                 newBalance.toString()
         );
 
@@ -108,13 +108,13 @@ public class WalletService {
             throw new SecurityException("You don't have access to this wallet");
         }
 
-        return WalletResponse.builder()
-                .id(foundWallet.getId())
-                .userId(foundWallet.getUserId())
-                .currency(foundWallet.getCurrency())
-                .balance(foundWallet.getBalance())
-                .createdDate(foundWallet.getCreatedDate())
-                .build();
+        return new WalletResponse(
+                foundWallet.getId(),
+                foundWallet.getUserId(),
+                foundWallet.getCurrency(),
+                foundWallet.getBalance(),
+                foundWallet.getCreatedDate()
+        );
 
     }
 

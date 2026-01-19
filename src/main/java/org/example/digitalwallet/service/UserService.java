@@ -30,17 +30,17 @@ public class UserService {
     @Transactional
     public void register(UserRequest request) {
 
-        User existingUser = userRepository.getUserByUsername(request.getUsername());
+        User existingUser = userRepository.getUserByUsername(request.username());
 
         if(existingUser != null) {
             throw new UserAlreadyExistsException("User exists already!");
         }
 
         User user = User.builder().
-                username(request.getUsername()).
-                email(request.getEmail()).
-                password(passwordEncoder.encode(request.getPassword())).
-                membershipStatus(request.getStatus()).
+                username(request.username()).
+                email(request.email()).
+                password(passwordEncoder.encode(request.password())).
+                membershipStatus(request.status()).
                 build();
 
 
@@ -51,13 +51,13 @@ public class UserService {
     public String login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
+                        request.username(),
+                        request.password()
                 )
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        return jwtUtil.generateToken(request.getUsername());
+        return jwtUtil.generateToken(request.username());
 
     }
 

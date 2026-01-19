@@ -37,7 +37,7 @@ public class TransferController {
         List<TransferResponse> transfers = transferService.getTransferHistory(cursor, limit);
 
         Long nextCursor = transfers.isEmpty() ? null :
-                transfers.getLast().getId();
+                transfers.getLast().id();
 
         return ResponseEntity.ok(new PagedResponse<>(transfers, nextCursor));
     }

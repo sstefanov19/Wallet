@@ -1,24 +1,29 @@
 package org.example.digitalwallet.dto;
 
 import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import lombok.Getter;
-import lombok.Setter;
 import org.example.digitalwallet.model.WalletCurrency;
 
 import java.math.BigDecimal;
 
-@Getter
-@Setter
-public class TransferRequest {
+public record TransferRequest(
+        @NotNull(message = "From wallet is required")
+        Long fromWallet,
 
-    private Long fromWallet;
-    private Long toWallet;
-    private WalletCurrency currency = WalletCurrency.EUR;
+        @NotNull(message = "To wallet is required")
+        Long toWallet,
 
-    @Positive(message = "Value must be positive")
-    @DecimalMax(value = "100000" ,message = "Transfer limit exceeded")
-    @NotBlank(message = "Value cannot be blank")
-    private BigDecimal transferAmount;
+        WalletCurrency currency,
+
+        @NotNull(message = "Transfer amount is required")
+        @Positive(message = "Value must be positive")
+        @DecimalMax(value = "100000", message = "Transfer limit exceeded")
+        BigDecimal transferAmount
+) {
+    public TransferRequest {
+        if (currency == null) {
+            currency = WalletCurrency.EUR;
+        }
+    }
 }

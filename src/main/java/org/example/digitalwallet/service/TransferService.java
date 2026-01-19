@@ -51,8 +51,8 @@ public class TransferService {
 
         User user = userRepository.getUserByUsername(authentication.getName());
 
-        Long fromWalletId = transferRequest.getFromWallet();
-        Long toWalletId = transferRequest.getToWallet();
+        Long fromWalletId = transferRequest.fromWallet();
+        Long toWalletId = transferRequest.toWallet();
 
         Wallet fromWallet = walletRepository.findById(fromWalletId);
         Wallet toWallet = walletRepository.findById(toWalletId);
@@ -64,7 +64,7 @@ public class TransferService {
         validateTransfer(fromWallet, toWallet, transferRequest);
 
         boolean success = walletRepository.executeTransfer(
-                fromWalletId, toWalletId, transferRequest.getTransferAmount());
+                fromWalletId, toWalletId, transferRequest.transferAmount());
 
         if (!success) {
             throw new IllegalArgumentException("Insufficient funds: wallet balance is less than transfer amount");
@@ -73,8 +73,8 @@ public class TransferService {
         Transfer transfer = Transfer.builder()
                 .fromWallet(fromWalletId)
                 .toWallet(toWalletId)
-                .currency(transferRequest.getCurrency())
-                .transferAmount(transferRequest.getTransferAmount())
+                .currency(transferRequest.currency())
+                .transferAmount(transferRequest.transferAmount())
                 .transferDate(LocalDateTime.now())
                 .build();
 
@@ -88,11 +88,11 @@ public class TransferService {
             throw new WalletNotFoundException("One of the wallets wasn't found or doesnt exist");
         }
 
-        if(!fromWallet.getCurrency().equals(request.getCurrency())) {
+        if(!fromWallet.getCurrency().equals(request.currency())) {
             throw new IllegalArgumentException("Currency mismatch: wallet currency does not match transfer currency");
         }
 
-        if(!toWallet.getCurrency().equals(request.getCurrency())) {
+        if(!toWallet.getCurrency().equals(request.currency())) {
             throw new IllegalArgumentException("Currency mismatch: recipient wallet currency does not match transfer currency");
         }
     }
@@ -110,14 +110,14 @@ public class TransferService {
 
 
     private TransferResponse transferResponseMapper(Transfer transfer) {
-        return TransferResponse.builder()
-                .id(transfer.getId())
-                .fromWallet(transfer.getFromWallet())
-                .toWallet(transfer.getToWallet())
-                .currency(transfer.getCurrency())
-                .transferAmount(transfer.getTransferAmount())
-                .transferDate(transfer.getTransferDate())
-                .build();
+        return new TransferResponse(
+                transfer.getId(),
+                transfer.getFromWallet(),
+                transfer.getToWallet(),
+                transfer.getCurrency(),
+                transfer.getTransferAmount(),
+                transfer.getTransferDate()
+        );
     }
 
     public TransferResponse fallbackSaveTransfer(TransferRequest transferRequest, Throwable throwable) {

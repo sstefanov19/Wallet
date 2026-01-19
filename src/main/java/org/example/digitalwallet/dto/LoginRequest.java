@@ -1,16 +1,11 @@
 package org.example.digitalwallet.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
-import lombok.Setter;
 
-@Getter
-@Setter
-public class LoginRequest {
+public record LoginRequest(
+        @NotBlank(message = "Username cannot be blank")
+        String username,
 
-    @NotBlank(message = "Username cannot be blank")
-    private String username;
-
-    @NotBlank(message = "Password cannot be blank")
-    private String password;
-}
+        @NotBlank(message = "Password cannot be blank")
+        String password
+) {}

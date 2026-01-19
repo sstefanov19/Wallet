@@ -30,7 +30,7 @@ public class WalletController {
     public ResponseEntity<String> depositToWallet(@Valid @RequestBody DepositRequest request) {
         walletService.depositToWallet(request);
 
-        return ResponseEntity.status(HttpStatus.OK).body("Deposit of " + request.getDepositAmount() +  " was successful ");
+        return ResponseEntity.status(HttpStatus.OK).body("Deposit of " + request.depositAmount() +  " was successful ");
     }
 
     @GetMapping("/{id}")
