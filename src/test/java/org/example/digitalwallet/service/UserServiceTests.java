@@ -52,11 +52,7 @@ public class UserServiceTests {
     @Test
     void testRegister_Success() {
         // Arrange
-        UserRequest request = new UserRequest();
-        request.setUsername("newuser");
-        request.setEmail("newuser@example.com");
-        request.setPassword("password123");
-        request.setStatus(MembershipStatus.FREE);
+        UserRequest request = new UserRequest("newuser@example.com", "newuser", "password123", MembershipStatus.FREE);
 
         when(userRepository.getUserByUsername("newuser")).thenReturn(null);
         when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
@@ -80,11 +76,8 @@ public class UserServiceTests {
     @Test
     void testRegister_WithPremiumStatus() {
         // Arrange
-        UserRequest request = new UserRequest();
-        request.setUsername("premiumuser");
-        request.setEmail("premium@example.com");
-        request.setPassword("securepass");
-        request.setStatus(MembershipStatus.PREMIUM);
+        UserRequest request = new UserRequest("premium@example.com", "premiumuser", "securepass",
+                MembershipStatus.PREMIUM);
 
         when(userRepository.getUserByUsername("premiumuser")).thenReturn(null);
         when(passwordEncoder.encode("securepass")).thenReturn("encodedSecurePass");
@@ -103,11 +96,7 @@ public class UserServiceTests {
     @Test
     void testRegister_WithUltraStatus() {
         // Arrange
-        UserRequest request = new UserRequest();
-        request.setUsername("ultrauser");
-        request.setEmail("ultra@example.com");
-        request.setPassword("ultrapass");
-        request.setStatus(MembershipStatus.ULTRA);
+        UserRequest request = new UserRequest("ultra@example.com", "ultrauser", "ultrapass", MembershipStatus.ULTRA);
 
         when(userRepository.getUserByUsername("ultrauser")).thenReturn(null);
         when(passwordEncoder.encode("ultrapass")).thenReturn("encodedUltraPass");
@@ -126,10 +115,7 @@ public class UserServiceTests {
     @Test
     void testRegister_UserAlreadyExists_ThrowsException() {
         // Arrange
-        UserRequest request = new UserRequest();
-        request.setUsername("existinguser");
-        request.setEmail("existing@example.com");
-        request.setPassword("password");
+        UserRequest request = new UserRequest("existing@example.com", "existinguser", "password", null);
 
         User existingUser = User.builder()
                 .id(1L)
@@ -142,8 +128,7 @@ public class UserServiceTests {
         // Act & Assert
         UserAlreadyExistsException exception = assertThrows(
                 UserAlreadyExistsException.class,
-                () -> userService.register(request)
-        );
+                () -> userService.register(request));
 
         assertEquals("User exists already!", exception.getMessage());
         verify(userRepository, never()).saveUser(any());
@@ -156,11 +141,7 @@ public class UserServiceTests {
         String plainPassword = "myPlainPassword123";
         String encodedPassword = "encodedPasswordHash";
 
-        UserRequest request = new UserRequest();
-        request.setUsername("testuser");
-        request.setEmail("test@example.com");
-        request.setPassword(plainPassword);
-        request.setStatus(MembershipStatus.FREE);
+        UserRequest request = new UserRequest("test@example.com", "testuser", plainPassword, MembershipStatus.FREE);
 
         when(userRepository.getUserByUsername("testuser")).thenReturn(null);
         when(passwordEncoder.encode(plainPassword)).thenReturn(encodedPassword);
@@ -182,11 +163,7 @@ public class UserServiceTests {
     @Test
     void testRegister_WithNullEmail() {
         // Arrange
-        UserRequest request = new UserRequest();
-        request.setUsername("userwithoutemail");
-        request.setEmail(null);
-        request.setPassword("password123");
-        request.setStatus(MembershipStatus.FREE);
+        UserRequest request = new UserRequest(null, "userwithoutemail", "password123", MembershipStatus.FREE);
 
         when(userRepository.getUserByUsername("userwithoutemail")).thenReturn(null);
         when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
@@ -208,9 +185,7 @@ public class UserServiceTests {
     @Test
     void testLogin_Success() {
         // Arrange
-        LoginRequest request = new LoginRequest();
-        request.setUsername("testuser");
-        request.setPassword("password123");
+        LoginRequest request = new LoginRequest("testuser", "password123");
 
         String expectedToken = "jwt.token.here";
 
@@ -233,9 +208,7 @@ public class UserServiceTests {
     @Test
     void testLogin_AuthenticationManagerCalledWithCorrectCredentials() {
         // Arrange
-        LoginRequest request = new LoginRequest();
-        request.setUsername("user123");
-        request.setPassword("pass456");
+        LoginRequest request = new LoginRequest("user123", "pass456");
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
@@ -247,8 +220,8 @@ public class UserServiceTests {
         userService.login(request);
 
         // Assert
-        ArgumentCaptor<UsernamePasswordAuthenticationToken> authCaptor =
-                ArgumentCaptor.forClass(UsernamePasswordAuthenticationToken.class);
+        ArgumentCaptor<UsernamePasswordAuthenticationToken> authCaptor = ArgumentCaptor
+                .forClass(UsernamePasswordAuthenticationToken.class);
         verify(authenticationManager).authenticate(authCaptor.capture());
 
         UsernamePasswordAuthenticationToken capturedAuth = authCaptor.getValue();
@@ -259,9 +232,7 @@ public class UserServiceTests {
     @Test
     void testLogin_SetsAuthenticationInSecurityContext() {
         // Arrange
-        LoginRequest request = new LoginRequest();
-        request.setUsername("testuser");
-        request.setPassword("password");
+        LoginRequest request = new LoginRequest("testuser", "password");
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
@@ -279,9 +250,7 @@ public class UserServiceTests {
     @Test
     void testLogin_ReturnsJwtToken() {
         // Arrange
-        LoginRequest request = new LoginRequest();
-        request.setUsername("user");
-        request.setPassword("pass");
+        LoginRequest request = new LoginRequest("user", "pass");
 
         String expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.token";
 

@@ -49,17 +49,15 @@ public class WalletControllerTests {
     @WithMockUser
     void testCreateWallet_Success() throws Exception {
         // Arrange
-        WalletRequest request = new WalletRequest();
-        request.setCurrency(WalletCurrency.EUR);
-        request.setBalance(BigDecimal.valueOf(100.00));
+        WalletRequest request = new WalletRequest(WalletCurrency.EUR, BigDecimal.valueOf(100));
 
         doNothing().when(walletService).createWallet(any(WalletRequest.class));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/wallet/create")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(content().string("Created new wallet"));
 
@@ -70,17 +68,15 @@ public class WalletControllerTests {
     @WithMockUser
     void testCreateWallet_WithNullCurrency() throws Exception {
         // Arrange
-        WalletRequest request = new WalletRequest();
-        request.setCurrency(null);
-        request.setBalance(BigDecimal.valueOf(50.00));
+        WalletRequest request = new WalletRequest(null, BigDecimal.valueOf(50));
 
         doNothing().when(walletService).createWallet(any(WalletRequest.class));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/wallet/create")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(content().string("Created new wallet"));
 
@@ -91,17 +87,15 @@ public class WalletControllerTests {
     @WithMockUser
     void testCreateWallet_WithZeroBalance() throws Exception {
         // Arrange
-        WalletRequest request = new WalletRequest();
-        request.setCurrency(WalletCurrency.EUR);
-        request.setBalance(BigDecimal.ZERO);
+        WalletRequest request = new WalletRequest(WalletCurrency.EUR, BigDecimal.ZERO);
 
         doNothing().when(walletService).createWallet(any(WalletRequest.class));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/wallet/create")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(content().string("Created new wallet"));
 
@@ -114,16 +108,15 @@ public class WalletControllerTests {
     @WithMockUser
     void testDepositToWallet_Success() throws Exception {
         // Arrange
-        DepositRequest request = new DepositRequest();
-        request.setDepositAmount(BigDecimal.valueOf(50.00));
+        DepositRequest request = new DepositRequest(BigDecimal.valueOf(50.00));
 
         doNothing().when(walletService).depositToWallet(any(DepositRequest.class));
 
         // Act & Assert
         mockMvc.perform(put("/api/v1/wallet/deposit")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Deposit of 50.0 was successful "));
 
@@ -134,16 +127,15 @@ public class WalletControllerTests {
     @WithMockUser
     void testDepositToWallet_LargeAmount() throws Exception {
         // Arrange
-        DepositRequest request = new DepositRequest();
-        request.setDepositAmount(BigDecimal.valueOf(10000.50));
+        DepositRequest request = new DepositRequest(BigDecimal.valueOf(10000.50));
 
         doNothing().when(walletService).depositToWallet(any(DepositRequest.class));
 
         // Act & Assert
         mockMvc.perform(put("/api/v1/wallet/deposit")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Deposit of 10000.5 was successful "));
 
@@ -154,16 +146,15 @@ public class WalletControllerTests {
     @WithMockUser
     void testDepositToWallet_SmallAmount() throws Exception {
         // Arrange
-        DepositRequest request = new DepositRequest();
-        request.setDepositAmount(BigDecimal.valueOf(0.01));
+        DepositRequest request = new DepositRequest(BigDecimal.valueOf(0.01));
 
         doNothing().when(walletService).depositToWallet(any(DepositRequest.class));
 
         // Act & Assert
         mockMvc.perform(put("/api/v1/wallet/deposit")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Deposit of 0.01 was successful "));
 
@@ -175,9 +166,9 @@ public class WalletControllerTests {
     void testDepositToWallet_InvalidJson() throws Exception {
         // Act & Assert
         mockMvc.perform(put("/api/v1/wallet/deposit")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{invalid json}"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{invalid json}"))
                 .andExpect(status().isBadRequest());
 
         verify(walletService, never()).depositToWallet(any(DepositRequest.class));

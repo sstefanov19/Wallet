@@ -59,9 +59,7 @@ public class WalletServiceTests {
         Long userId = 1L;
         BigDecimal initialBalance = BigDecimal.valueOf(100.00);
 
-        WalletRequest request = new WalletRequest();
-        request.setCurrency(WalletCurrency.EUR);
-        request.setBalance(initialBalance);
+        WalletRequest request = new WalletRequest(WalletCurrency.EUR, initialBalance);
 
         User mockUser = User.builder()
                 .id(userId)
@@ -90,8 +88,7 @@ public class WalletServiceTests {
                 "test@example.com",
                 username,
                 "EUR",
-                "100.0"
-        );
+                "100.0");
     }
 
     @Test
@@ -101,9 +98,7 @@ public class WalletServiceTests {
         Long userId = 1L;
         BigDecimal initialBalance = BigDecimal.valueOf(50.00);
 
-        WalletRequest request = new WalletRequest();
-        request.setCurrency(null);
-        request.setBalance(initialBalance);
+        WalletRequest request = new WalletRequest(null, initialBalance);
 
         User mockUser = User.builder()
                 .id(userId)
@@ -129,17 +124,14 @@ public class WalletServiceTests {
     @Test
     void testCreateWallet_UserNotAuthenticated_ThrowsException() {
         // Arrange
-        WalletRequest request = new WalletRequest();
-        request.setCurrency(WalletCurrency.EUR);
-        request.setBalance(BigDecimal.valueOf(100.00));
+        WalletRequest request = new WalletRequest(WalletCurrency.EUR, BigDecimal.valueOf(100.00));
 
         when(securityContext.getAuthentication()).thenReturn(null);
 
         // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(
                 UserNotAuthenticatedException.class,
-                () -> walletService.createWallet(request)
-        );
+                () -> walletService.createWallet(request));
 
         assertEquals("User was not authenticated! Try logging in", exception.getMessage());
         verify(walletRepository, never()).createWallet(any());
@@ -152,9 +144,7 @@ public class WalletServiceTests {
         String username = "testuser";
         Long userId = 1L;
 
-        WalletRequest request = new WalletRequest();
-        request.setCurrency(WalletCurrency.EUR);
-        request.setBalance(BigDecimal.valueOf(200.00));
+        WalletRequest request = new WalletRequest(WalletCurrency.EUR, BigDecimal.valueOf(200.00));
 
         User mockUser = User.builder()
                 .id(userId)
@@ -199,8 +189,7 @@ public class WalletServiceTests {
                 .balance(initialBalance)
                 .build();
 
-        DepositRequest request = new DepositRequest();
-        request.setDepositAmount(depositAmount);
+        DepositRequest request = new DepositRequest(depositAmount);
 
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn(username);
@@ -217,27 +206,25 @@ public class WalletServiceTests {
                 username,
                 "EUR",
                 "50.0",
-                expectedNewBalance.toString()
-        );
+                expectedNewBalance.toString());
     }
 
     @Test
     void testDepositToWallet_UserNotAuthenticated_ThrowsException() {
         // Arrange
-        DepositRequest request = new DepositRequest();
-        request.setDepositAmount(BigDecimal.valueOf(50.00));
+        DepositRequest request = new DepositRequest(BigDecimal.valueOf(50.00));
 
         when(securityContext.getAuthentication()).thenReturn(null);
 
         // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(
                 UserNotAuthenticatedException.class,
-                () -> walletService.depositToWallet(request)
-        );
+                () -> walletService.depositToWallet(request));
 
         assertEquals("User was not authenticated! Try logging in", exception.getMessage());
         verify(walletRepository, never()).addFunds(any(), any());
-        verify(emailService, never()).sendEmailOnDeposit(anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(emailService, never()).sendEmailOnDeposit(anyString(), anyString(), anyString(), anyString(),
+                anyString());
     }
 
     @Test
@@ -261,8 +248,7 @@ public class WalletServiceTests {
                 .balance(BigDecimal.valueOf(200.00))
                 .build();
 
-        DepositRequest request = new DepositRequest();
-        request.setDepositAmount(depositAmount);
+        DepositRequest request = new DepositRequest(depositAmount);
 
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn(username);
@@ -274,7 +260,8 @@ public class WalletServiceTests {
 
         // Assert
         verify(walletRepository, times(1)).addFunds(depositAmount, walletId);
-        verify(emailService, never()).sendEmailOnDeposit(anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(emailService, never()).sendEmailOnDeposit(anyString(), anyString(), anyString(), anyString(),
+                anyString());
     }
 
     @Test
@@ -299,8 +286,7 @@ public class WalletServiceTests {
                 .balance(initialBalance)
                 .build();
 
-        DepositRequest request = new DepositRequest();
-        request.setDepositAmount(depositAmount);
+        DepositRequest request = new DepositRequest(depositAmount);
 
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn(username);
@@ -317,7 +303,6 @@ public class WalletServiceTests {
                 eq(username),
                 eq("EUR"),
                 eq("10000.5"),
-                anyString()
-        );
+                anyString());
     }
 }

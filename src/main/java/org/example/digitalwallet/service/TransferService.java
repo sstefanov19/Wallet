@@ -12,6 +12,8 @@ import org.example.digitalwallet.model.Wallet;
 import org.example.digitalwallet.repository.TransferRepository;
 import org.example.digitalwallet.repository.UserRepository;
 import org.example.digitalwallet.repository.WalletRepository;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.security.core.Authentication;
@@ -35,11 +37,14 @@ public class TransferService {
         this.userRepository = userRepository;
     }
 
-    @RateLimiter(name = "saveTransferRateLimiter" , fallbackMethod = "fallbackSaveTransfer")
+    @RateLimiter(name = "saveTransferRateLimiter" , fallbackMethod="fallbackSaveTransfer")
     @Retryable(
-            retryFor = {org.springframework.dao.DeadlockLoserDataAccessException.class},
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 100, multiplier = 2)
+            retryFor = {
+                DeadlockLoserDataAccessException.class,
+                CannotAcquireLockException.class
+            },
+            maxAttempts = 5,
+            backoff = @Backoff(delay = 100, maxDelay = 1000, multiplier = 2, random = true)
     )
     @Transactional
     public TransferResponse saveTransfer(TransferRequest transferRequest) {

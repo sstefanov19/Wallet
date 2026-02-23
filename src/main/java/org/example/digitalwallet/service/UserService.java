@@ -61,7 +61,7 @@ public class UserService {
 
     }
 
-    private void loggingFallBack(LoginRequest request , Throwable t) {
+    private String loggingFallBack(LoginRequest request , Throwable t) {
         throw new RateLimitExceededException("Rate limit for logging in exceeded try again later");
     }
 }

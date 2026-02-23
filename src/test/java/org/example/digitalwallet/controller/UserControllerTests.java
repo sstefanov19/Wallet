@@ -46,19 +46,15 @@ public class UserControllerTests {
     @Test
     void testRegister_Success() throws Exception {
         // Arrange
-        UserRequest request = new UserRequest();
-        request.setUsername("testuser");
-        request.setEmail("test@example.com");
-        request.setPassword("password123");
-        request.setStatus(MembershipStatus.FREE);
+        UserRequest request = new UserRequest("test@example.com", "testuser", "password123", MembershipStatus.FREE);
 
         doNothing().when(userService).register(any(UserRequest.class));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(content().string("User registered successfully"));
 
@@ -68,19 +64,16 @@ public class UserControllerTests {
     @Test
     void testRegister_WithPremiumStatus() throws Exception {
         // Arrange
-        UserRequest request = new UserRequest();
-        request.setUsername("premiumuser");
-        request.setEmail("premium@example.com");
-        request.setPassword("securepass");
-        request.setStatus(MembershipStatus.PREMIUM);
+        UserRequest request = new UserRequest("premium@example.com", "premiumuser", "securepass",
+                MembershipStatus.PREMIUM);
 
         doNothing().when(userService).register(any(UserRequest.class));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(content().string("User registered successfully"));
 
@@ -90,19 +83,15 @@ public class UserControllerTests {
     @Test
     void testRegister_WithUltraStatus() throws Exception {
         // Arrange
-        UserRequest request = new UserRequest();
-        request.setUsername("ultrauser");
-        request.setEmail("ultra@example.com");
-        request.setPassword("password");
-        request.setStatus(MembershipStatus.ULTRA);
+        UserRequest request = new UserRequest("ultra@example.com", "ultrauser", "password", MembershipStatus.ULTRA);
 
         doNothing().when(userService).register(any(UserRequest.class));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(content().string("User registered successfully"));
 
@@ -112,20 +101,17 @@ public class UserControllerTests {
     @Test
     void testRegister_UserAlreadyExists() throws Exception {
         // Arrange
-        UserRequest request = new UserRequest();
-        request.setUsername("existinguser");
-        request.setEmail("existing@example.com");
-        request.setPassword("password");
-        request.setStatus(MembershipStatus.FREE);
+        UserRequest request = new UserRequest("existing@example.com", "existinguser", "password",
+                MembershipStatus.FREE);
 
         doThrow(new UserAlreadyExistsException("User exists already!"))
                 .when(userService).register(any(UserRequest.class));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict());
 
         verify(userService, times(1)).register(any(UserRequest.class));
@@ -134,19 +120,15 @@ public class UserControllerTests {
     @Test
     void testRegister_WithNullEmail() throws Exception {
         // Arrange
-        UserRequest request = new UserRequest();
-        request.setUsername("noemailuser");
-        request.setEmail(null);
-        request.setPassword("password");
-        request.setStatus(MembershipStatus.FREE);
+        UserRequest request = new UserRequest(null, "noemailuser", "password", MembershipStatus.FREE);
 
         doNothing().when(userService).register(any(UserRequest.class));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(content().string("User registered successfully"));
 
@@ -157,9 +139,9 @@ public class UserControllerTests {
     void testRegister_InvalidJson() throws Exception {
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/register")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{invalid json}"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{invalid json}"))
                 .andExpect(status().isBadRequest());
 
         verify(userService, never()).register(any(UserRequest.class));
@@ -170,9 +152,7 @@ public class UserControllerTests {
     @Test
     void testLogin_Success() throws Exception {
         // Arrange
-        LoginRequest request = new LoginRequest();
-        request.setUsername("testuser");
-        request.setPassword("password123");
+        LoginRequest request = new LoginRequest("testuser", "password123");
 
         String expectedToken = "jwt.token.here";
 
@@ -180,9 +160,9 @@ public class UserControllerTests {
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().string(expectedToken));
 
@@ -192,9 +172,7 @@ public class UserControllerTests {
     @Test
     void testLogin_ReturnsJwtToken() throws Exception {
         // Arrange
-        LoginRequest request = new LoginRequest();
-        request.setUsername("user123");
-        request.setPassword("securepass");
+        LoginRequest request = new LoginRequest("user123", "securepass");
 
         String jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.token";
 
@@ -202,9 +180,9 @@ public class UserControllerTests {
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().string(jwtToken));
 
@@ -214,18 +192,16 @@ public class UserControllerTests {
     @Test
     void testLogin_BadCredentials() throws Exception {
         // Arrange
-        LoginRequest request = new LoginRequest();
-        request.setUsername("testuser");
-        request.setPassword("wrongpassword");
+        LoginRequest request = new LoginRequest("testuser", "wrongpassword");
 
         when(userService.login(any(LoginRequest.class)))
                 .thenThrow(new BadCredentialsException("Invalid credentials"));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
 
         verify(userService, times(1)).login(any(LoginRequest.class));
@@ -235,9 +211,9 @@ public class UserControllerTests {
     void testLogin_InvalidJson() throws Exception {
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{invalid json}"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{invalid json}"))
                 .andExpect(status().isBadRequest());
 
         verify(userService, never()).login(any(LoginRequest.class));
@@ -246,18 +222,16 @@ public class UserControllerTests {
     @Test
     void testLogin_EmptyCredentials() throws Exception {
         // Arrange
-        LoginRequest request = new LoginRequest();
-        request.setUsername("");
-        request.setPassword("");
+        LoginRequest request = new LoginRequest("", "");
 
         when(userService.login(any(LoginRequest.class)))
                 .thenThrow(new BadCredentialsException("Invalid credentials"));
 
         // Act & Assert
         mockMvc.perform(post("/api/v1/auth/login")
-                        .with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
 
         verify(userService, times(1)).login(any(LoginRequest.class));
