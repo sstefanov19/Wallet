@@ -1,17 +1,14 @@
 package org.example.digitalwallet.service;
 
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import lombok.AllArgsConstructor;
 import org.example.digitalwallet.dto.TransferRequest;
 import org.example.digitalwallet.dto.TransferResponse;
 import org.example.digitalwallet.exception.RateLimitExceededException;
 import org.example.digitalwallet.exception.UserNotAuthenticatedException;
-import org.example.digitalwallet.exception.WalletNotFoundException;
 import org.example.digitalwallet.model.Transfer;
-import org.example.digitalwallet.model.User;
-import org.example.digitalwallet.model.Wallet;
 import org.example.digitalwallet.repository.TransferRepository;
-import org.example.digitalwallet.repository.UserRepository;
-import org.example.digitalwallet.repository.WalletRepository;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.retry.annotation.Backoff;
@@ -24,18 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
+@AllArgsConstructor
 @Service
 public class TransferService {
 
     private final TransferRepository transferRepository;
-    private final WalletRepository walletRepository;
-    private final UserRepository userRepository;
-
-    public TransferService(TransferRepository transferRepository, WalletRepository walletRepository, UserRepository userRepository) {
-        this.transferRepository = transferRepository;
-        this.walletRepository = walletRepository;
-        this.userRepository = userRepository;
-    }
+    private final WalletService walletService;
 
     @RateLimiter(name = "saveTransferRateLimiter" , fallbackMethod="fallbackSaveTransfer")
     @Retryable(
@@ -54,22 +45,12 @@ public class TransferService {
             throw new UserNotAuthenticatedException("User was not authenticated! Try logging in");
         }
 
-        User user = userRepository.getUserByUsername(authentication.getName());
-
         Long fromWalletId = transferRequest.fromWallet();
         Long toWalletId = transferRequest.toWallet();
 
-        Wallet fromWallet = walletRepository.findById(fromWalletId);
-        Wallet toWallet = walletRepository.findById(toWalletId);
-
-        if (fromWallet == null || !fromWallet.getUserId().equals(user.getId())) {
-            throw new SecurityException("You don't have permission to transfer from this wallet");
-        }
-
-        validateTransfer(fromWallet, toWallet, transferRequest);
-
-        boolean success = walletRepository.executeTransfer(
-                fromWalletId, toWalletId, transferRequest.transferAmount());
+        boolean success = walletService.executeTransfer(
+                fromWalletId, toWalletId, transferRequest.transferAmount(),
+                transferRequest.currency(), authentication.getName());
 
         if (!success) {
             throw new IllegalArgumentException("Insufficient funds: wallet balance is less than transfer amount");
@@ -88,27 +69,9 @@ public class TransferService {
         return transferResponseMapper(transfer);
     }
 
-    private void validateTransfer(Wallet fromWallet, Wallet toWallet, TransferRequest request) {
-        if(fromWallet == null || toWallet == null) {
-            throw new WalletNotFoundException("One of the wallets wasn't found or doesnt exist");
-        }
-
-        if(!fromWallet.getCurrency().equals(request.currency())) {
-            throw new IllegalArgumentException("Currency mismatch: wallet currency does not match transfer currency");
-        }
-
-        if(!toWallet.getCurrency().equals(request.currency())) {
-            throw new IllegalArgumentException("Currency mismatch: recipient wallet currency does not match transfer currency");
-        }
-    }
-
 
     public List<TransferResponse> getTransferHistory(Long cursor,Integer limit) {
         List<Transfer> getTransfers = transferRepository.findTransfers(cursor, limit);
-
-        if(getTransfers == null) {
-            throw new RuntimeException("No transfers available for user");
-        }
 
         return getTransfers.stream().map(this::transferResponseMapper).toList();
     }
@@ -125,7 +88,7 @@ public class TransferService {
         );
     }
 
-    public TransferResponse fallbackSaveTransfer(TransferRequest transferRequest, Throwable throwable) {
+    public TransferResponse fallbackSaveTransfer(TransferRequest transferRequest, RequestNotPermitted ex) {
         throw new RateLimitExceededException("Too many requests. Try again later!");
     }
 }

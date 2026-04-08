@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public class UserRepository {
@@ -17,7 +18,7 @@ public class UserRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public User getUserByUsername(String username) {
+    public Optional<User> getUserByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
 
         List<User> users = jdbcTemplate.query(sql ,  (rs, rowNum) -> User.builder()
@@ -30,7 +31,7 @@ public class UserRepository {
                         username
         );
 
-        return users.isEmpty() ? null : users.getFirst();
+        return users.isEmpty() ? Optional.empty() : Optional.of(users.getFirst());
     }
 
     public Long getUserIdByName(String username) {

@@ -4,6 +4,7 @@ import org.example.digitalwallet.model.Wallet;
 import org.example.digitalwallet.model.WalletCurrency;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -74,8 +75,11 @@ public class WalletRepository {
         return getWallet(user_id, sql);
     }
 
-    @CacheEvict(value = WALLET_CACHE, key = "#wallet_id")
-    public void addFunds(BigDecimal deposit, Long wallet_id) {
+    @Caching(evict = {
+        @CacheEvict(value = WALLET_CACHE, key = "#walletId"),
+        @CacheEvict(value = WALLET_BY_USER_CACHE, key = "#userId")
+    })
+    public void addFunds(BigDecimal deposit, Long walletId, Long userId) {
 
         String sql = """
                 UPDATE wallet
@@ -83,13 +87,15 @@ public class WalletRepository {
                 WHERE id = ?
                 """;
 
-
-        jdbcTemplate.update(sql, deposit , wallet_id);
+        jdbcTemplate.update(sql, deposit, walletId);
 
     }
 
-    @CacheEvict(value = WALLET_CACHE, key = "#wallet_id")
-    public boolean deductFunds(BigDecimal amount, Long wallet_id) {
+    @Caching(evict = {
+        @CacheEvict(value = WALLET_CACHE, key = "#walletId"),
+        @CacheEvict(value = WALLET_BY_USER_CACHE, key = "#userId")
+    })
+    public boolean deductFunds(BigDecimal amount, Long walletId, Long userId) {
 
         String sql = """
                 UPDATE wallet
@@ -97,12 +103,15 @@ public class WalletRepository {
                 WHERE id = ? AND balance >= ?
                 """;
 
-        int rowsEffected = jdbcTemplate.update(sql, amount, wallet_id, amount);
+        int rowsEffected = jdbcTemplate.update(sql, amount, walletId, amount);
         return rowsEffected > 0;
 
     }
 
-    @CacheEvict(value = WALLET_CACHE, allEntries = true)
+    @Caching(evict = {
+        @CacheEvict(value = WALLET_CACHE, key = "#fromWalletId"),
+        @CacheEvict(value = WALLET_CACHE, key = "#toWalletId")
+    })
     public boolean executeTransfer(Long fromWalletId, Long toWalletId, BigDecimal amount) {
         // Lock in consistent order to prevent deadlocks
         Long firstId = Math.min(fromWalletId, toWalletId);
