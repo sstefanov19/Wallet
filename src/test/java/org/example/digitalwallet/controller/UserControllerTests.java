@@ -46,7 +46,7 @@ public class UserControllerTests {
     @Test
     void testRegister_Success() throws Exception {
         // Arrange
-        UserRequest request = new UserRequest("test@example.com", "testuser", "password123", MembershipStatus.FREE);
+        UserRequest request = new UserRequest("test@example.com", "testuser", "passw0rd", MembershipStatus.FREE);
 
         doNothing().when(userService).register(any(UserRequest.class));
 
@@ -118,21 +118,16 @@ public class UserControllerTests {
     }
 
     @Test
-    void testRegister_WithNullEmail() throws Exception {
-        // Arrange
+    void testRegister_WithNullEmail_ReturnsBadRequest() throws Exception {
         UserRequest request = new UserRequest(null, "noemailuser", "password", MembershipStatus.FREE);
 
-        doNothing().when(userService).register(any(UserRequest.class));
-
-        // Act & Assert
         mockMvc.perform(post("/api/v1/auth/register")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(content().string("User registered successfully"));
+                .andExpect(status().isBadRequest());
 
-        verify(userService, times(1)).register(any(UserRequest.class));
+        verify(userService, never()).register(any(UserRequest.class));
     }
 
     @Test
@@ -220,20 +215,15 @@ public class UserControllerTests {
     }
 
     @Test
-    void testLogin_EmptyCredentials() throws Exception {
-        // Arrange
+    void testLogin_EmptyCredentials_ReturnsBadRequest() throws Exception {
         LoginRequest request = new LoginRequest("", "");
 
-        when(userService.login(any(LoginRequest.class)))
-                .thenThrow(new BadCredentialsException("Invalid credentials"));
-
-        // Act & Assert
         mockMvc.perform(post("/api/v1/auth/login")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isBadRequest());
 
-        verify(userService, times(1)).login(any(LoginRequest.class));
+        verify(userService, never()).login(any(LoginRequest.class));
     }
 }

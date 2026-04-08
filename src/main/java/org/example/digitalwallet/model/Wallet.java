@@ -24,5 +24,5 @@ public class Wallet {
 
     private BigDecimal balance;
 
-    private LocalDateTime createdDate;
+    private LocalDateTime createdAt;
 }

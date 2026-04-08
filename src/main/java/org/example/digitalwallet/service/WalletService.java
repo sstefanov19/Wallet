@@ -47,7 +47,7 @@ public class WalletService {
                 .userId(user.getId())
                 .currency(currency)
                 .balance(request.balance())
-                .createdDate(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
                 .build();
 
         walletRepository.createWallet(wallet);
@@ -116,7 +116,7 @@ public class WalletService {
                 foundWallet.getUserId(),
                 foundWallet.getCurrency(),
                 foundWallet.getBalance(),
-                foundWallet.getCreatedDate()
+                foundWallet.getCreatedAt()
         );
     }
 

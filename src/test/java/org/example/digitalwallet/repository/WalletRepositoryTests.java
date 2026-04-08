@@ -47,7 +47,7 @@ public class WalletRepositoryTests {
                 .userId(testUserId)
                 .currency(WalletCurrency.EUR)
                 .balance(BigDecimal.valueOf(100.00))
-                .createdDate(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
                 .build();
 
         // Act
@@ -66,13 +66,11 @@ public class WalletRepositoryTests {
     void testCreateWallet_VerifyStoredData() {
         // Arrange
         BigDecimal expectedBalance = BigDecimal.valueOf(250.50);
-        LocalDateTime createdDate = LocalDateTime.now();
-
         Wallet wallet = Wallet.builder()
                 .userId(testUserId)
                 .currency(WalletCurrency.EUR)
                 .balance(expectedBalance)
-                .createdDate(createdDate)
+                .createdAt(LocalDateTime.now())
                 .build();
 
         // Act
@@ -103,7 +101,7 @@ public class WalletRepositoryTests {
                 .userId(testUserId)
                 .currency(WalletCurrency.EUR)
                 .balance(BigDecimal.ZERO)
-                .createdDate(LocalDateTime.now())
+                .createdAt(LocalDateTime.now())
                 .build();
 
         // Act
@@ -124,7 +122,7 @@ public class WalletRepositoryTests {
     void testGetWalletByUserId_Success() {
         // Arrange
         jdbcTemplate.update(
-                "INSERT INTO wallet (user_id, currency, balance, create_time) VALUES (?, ?, ?, ?)",
+                "INSERT INTO wallet (user_id, currency, balance, created_at) VALUES (?, ?, ?, ?)",
                 testUserId, "EUR", BigDecimal.valueOf(500.00), LocalDateTime.now()
         );
 
@@ -142,7 +140,7 @@ public class WalletRepositoryTests {
     void testGetWalletByUserId_VerifyAllFields() {
         // Arrange
         jdbcTemplate.update(
-                "INSERT INTO wallet (user_id, currency, balance, create_time) VALUES (?, ?, ?, ?)",
+                "INSERT INTO wallet (user_id, currency, balance, created_at) VALUES (?, ?, ?, ?)",
                 testUserId, "EUR", BigDecimal.valueOf(123.45), LocalDateTime.now()
         );
 
@@ -161,7 +159,7 @@ public class WalletRepositoryTests {
     void testGetWalletByUserId_WithZeroBalance() {
         // Arrange
         jdbcTemplate.update(
-                "INSERT INTO wallet (user_id, currency, balance, create_time) VALUES (?, ?, ?, ?)",
+                "INSERT INTO wallet (user_id, currency, balance, created_at) VALUES (?, ?, ?, ?)",
                 testUserId, "EUR", BigDecimal.ZERO, LocalDateTime.now()
         );
 
@@ -179,7 +177,7 @@ public class WalletRepositoryTests {
     void testAddFunds_Success() {
         // Arrange
         jdbcTemplate.update(
-                "INSERT INTO wallet (user_id, currency, balance, create_time) VALUES (?, ?, ?, ?)",
+                "INSERT INTO wallet (user_id, currency, balance, created_at) VALUES (?, ?, ?, ?)",
                 testUserId, "EUR", BigDecimal.valueOf(100.00), LocalDateTime.now()
         );
         Long walletId = jdbcTemplate.queryForObject("SELECT id FROM wallet WHERE user_id = ?", Long.class, testUserId);
@@ -187,7 +185,7 @@ public class WalletRepositoryTests {
         BigDecimal depositAmount = BigDecimal.valueOf(50.00);
 
         // Act
-        walletRepository.addFunds(depositAmount, walletId);
+        walletRepository.addFunds(depositAmount, walletId, testUserId);
 
         // Assert
         BigDecimal newBalance = jdbcTemplate.queryForObject(
@@ -202,15 +200,15 @@ public class WalletRepositoryTests {
     void testAddFunds_MultipleDeposits() {
         // Arrange
         jdbcTemplate.update(
-                "INSERT INTO wallet (user_id, currency, balance, create_time) VALUES (?, ?, ?, ?)",
+                "INSERT INTO wallet (user_id, currency, balance, created_at) VALUES (?, ?, ?, ?)",
                 testUserId, "EUR", BigDecimal.valueOf(100.00), LocalDateTime.now()
         );
         Long walletId = jdbcTemplate.queryForObject("SELECT id FROM wallet WHERE user_id = ?", Long.class, testUserId);
 
         // Act
-        walletRepository.addFunds(BigDecimal.valueOf(25.00), walletId);
-        walletRepository.addFunds(BigDecimal.valueOf(75.50), walletId);
-        walletRepository.addFunds(BigDecimal.valueOf(10.25), walletId);
+        walletRepository.addFunds(BigDecimal.valueOf(25.00), walletId, testUserId);
+        walletRepository.addFunds(BigDecimal.valueOf(75.50), walletId, testUserId);
+        walletRepository.addFunds(BigDecimal.valueOf(10.25), walletId, testUserId);
 
         // Assert
         BigDecimal newBalance = jdbcTemplate.queryForObject(
@@ -225,7 +223,7 @@ public class WalletRepositoryTests {
     void testAddFunds_ToZeroBalance() {
         // Arrange
         jdbcTemplate.update(
-                "INSERT INTO wallet (user_id, currency, balance, create_time) VALUES (?, ?, ?, ?)",
+                "INSERT INTO wallet (user_id, currency, balance, created_at) VALUES (?, ?, ?, ?)",
                 testUserId, "EUR", BigDecimal.ZERO, LocalDateTime.now()
         );
         Long walletId = jdbcTemplate.queryForObject("SELECT id FROM wallet WHERE user_id = ?", Long.class, testUserId);
@@ -233,7 +231,7 @@ public class WalletRepositoryTests {
         BigDecimal depositAmount = BigDecimal.valueOf(100.00);
 
         // Act
-        walletRepository.addFunds(depositAmount, walletId);
+        walletRepository.addFunds(depositAmount, walletId, testUserId);
 
         // Assert
         BigDecimal newBalance = jdbcTemplate.queryForObject(
@@ -248,7 +246,7 @@ public class WalletRepositoryTests {
     void testAddFunds_LargeAmount() {
         // Arrange
         jdbcTemplate.update(
-                "INSERT INTO wallet (user_id, currency, balance, create_time) VALUES (?, ?, ?, ?)",
+                "INSERT INTO wallet (user_id, currency, balance, created_at) VALUES (?, ?, ?, ?)",
                 testUserId, "EUR", BigDecimal.valueOf(1000.00), LocalDateTime.now()
         );
         Long walletId = jdbcTemplate.queryForObject("SELECT id FROM wallet WHERE user_id = ?", Long.class, testUserId);
@@ -256,7 +254,7 @@ public class WalletRepositoryTests {
         BigDecimal largeDeposit = BigDecimal.valueOf(50000.99);
 
         // Act
-        walletRepository.addFunds(largeDeposit, walletId);
+        walletRepository.addFunds(largeDeposit, walletId, testUserId);
 
         // Assert
         BigDecimal newBalance = jdbcTemplate.queryForObject(
@@ -271,7 +269,7 @@ public class WalletRepositoryTests {
     void testAddFunds_PrecisionHandling() {
         // Arrange
         jdbcTemplate.update(
-                "INSERT INTO wallet (user_id, currency, balance, create_time) VALUES (?, ?, ?, ?)",
+                "INSERT INTO wallet (user_id, currency, balance, created_at) VALUES (?, ?, ?, ?)",
                 testUserId, "EUR", new BigDecimal("100.12"), LocalDateTime.now()
         );
         Long walletId = jdbcTemplate.queryForObject("SELECT id FROM wallet WHERE user_id = ?", Long.class, testUserId);
@@ -279,7 +277,7 @@ public class WalletRepositoryTests {
         BigDecimal depositAmount = new BigDecimal("50.88");
 
         // Act
-        walletRepository.addFunds(depositAmount, walletId);
+        walletRepository.addFunds(depositAmount, walletId, testUserId);
 
         // Assert
         BigDecimal newBalance = jdbcTemplate.queryForObject(

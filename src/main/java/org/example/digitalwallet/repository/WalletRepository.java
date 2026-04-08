@@ -26,13 +26,13 @@ public class WalletRepository {
 
     @Cacheable(value = WALLET_CACHE, key = "#id", unless = "#result == null")
     public Wallet findById(Long id) {
-        String sql = "SELECT id, user_id, currency, balance FROM wallet WHERE id = ?";
+        String sql = "SELECT id, user_id, currency, balance, created_at FROM wallet WHERE id = ?";
 
         return getWallet(id, sql);
     }
 
     public Wallet findByIdForUpdate(Long id) {
-        String sql = "SELECT id, user_id, currency, balance FROM wallet WHERE id = ? FOR UPDATE";
+        String sql = "SELECT id, user_id, currency, balance, created_at FROM wallet WHERE id = ? FOR UPDATE";
 
         return getWallet(id, sql);
     }
@@ -43,6 +43,9 @@ public class WalletRepository {
                         .userId(rs.getLong("user_id"))
                         .currency(WalletCurrency.valueOf(rs.getString("currency")))
                         .balance(rs.getBigDecimal("balance"))
+                        .createdAt(rs.getTimestamp("created_at") != null
+                                ? rs.getTimestamp("created_at").toLocalDateTime()
+                                : null)
                         .build(),
                         id);
 
@@ -57,7 +60,7 @@ public class WalletRepository {
     @CacheEvict(value = WALLET_BY_USER_CACHE, key = "#wallet.userId")
     public void createWallet(Wallet wallet) {
         String sql = """
-            INSERT INTO wallet (user_id, currency,balance ,create_time)
+            INSERT INTO wallet (user_id, currency,balance ,created_at)
             VALUES (?, ?,?,?)
             """;
 
@@ -65,12 +68,12 @@ public class WalletRepository {
                 wallet.getUserId(),
                 wallet.getCurrency().name(),
                 wallet.getBalance(),
-                wallet.getCreatedDate());
+                wallet.getCreatedAt());
     }
 
     @Cacheable(value = WALLET_BY_USER_CACHE, key = "#user_id", unless = "#result == null")
     public Wallet getWalletByUserId(Long user_id) {
-        String sql = "SELECT id , user_id, currency , balance FROM wallet where user_id = ?";
+        String sql = "SELECT id, user_id, currency, balance, created_at FROM wallet WHERE user_id = ?";
 
         return getWallet(user_id, sql);
     }

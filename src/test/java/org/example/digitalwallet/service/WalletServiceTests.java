@@ -6,7 +6,6 @@ import org.example.digitalwallet.exception.UserNotAuthenticatedException;
 import org.example.digitalwallet.model.User;
 import org.example.digitalwallet.model.Wallet;
 import org.example.digitalwallet.model.WalletCurrency;
-import org.example.digitalwallet.repository.UserRepository;
 import org.example.digitalwallet.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,7 +30,7 @@ public class WalletServiceTests {
     private WalletRepository walletRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private UserService userService;
 
     @Mock
     private EmailService emailService;
@@ -54,7 +53,6 @@ public class WalletServiceTests {
 
     @Test
     void testCreateWallet_Success() {
-        // Arrange
         String username = "testuser";
         Long userId = 1L;
         BigDecimal initialBalance = BigDecimal.valueOf(100.00);
@@ -69,12 +67,10 @@ public class WalletServiceTests {
 
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn(username);
-        when(userRepository.getUserByUsername(username)).thenReturn(mockUser);
+        when(userService.getUserByUsername(username)).thenReturn(mockUser);
 
-        // Act
         walletService.createWallet(request);
 
-        // Assert
         ArgumentCaptor<Wallet> walletCaptor = ArgumentCaptor.forClass(Wallet.class);
         verify(walletRepository, times(1)).createWallet(walletCaptor.capture());
 
@@ -82,7 +78,7 @@ public class WalletServiceTests {
         assertEquals(userId, capturedWallet.getUserId());
         assertEquals(WalletCurrency.EUR, capturedWallet.getCurrency());
         assertEquals(initialBalance, capturedWallet.getBalance());
-        assertNotNull(capturedWallet.getCreatedDate());
+        assertNotNull(capturedWallet.getCreatedAt());
 
         verify(emailService).sendWalletCreationEmail(
                 "test@example.com",
@@ -93,7 +89,6 @@ public class WalletServiceTests {
 
     @Test
     void testCreateWallet_WithNullCurrency_DefaultsToEUR() {
-        // Arrange
         String username = "testuser";
         Long userId = 1L;
         BigDecimal initialBalance = BigDecimal.valueOf(50.00);
@@ -108,27 +103,22 @@ public class WalletServiceTests {
 
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn(username);
-        when(userRepository.getUserByUsername(username)).thenReturn(mockUser);
+        when(userService.getUserByUsername(username)).thenReturn(mockUser);
 
-        // Act
         walletService.createWallet(request);
 
-        // Assert
         ArgumentCaptor<Wallet> walletCaptor = ArgumentCaptor.forClass(Wallet.class);
         verify(walletRepository).createWallet(walletCaptor.capture());
 
-        Wallet capturedWallet = walletCaptor.getValue();
-        assertEquals(WalletCurrency.EUR, capturedWallet.getCurrency());
+        assertEquals(WalletCurrency.EUR, walletCaptor.getValue().getCurrency());
     }
 
     @Test
     void testCreateWallet_UserNotAuthenticated_ThrowsException() {
-        // Arrange
         WalletRequest request = new WalletRequest(WalletCurrency.EUR, BigDecimal.valueOf(100.00));
 
         when(securityContext.getAuthentication()).thenReturn(null);
 
-        // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(
                 UserNotAuthenticatedException.class,
                 () -> walletService.createWallet(request));
@@ -140,7 +130,6 @@ public class WalletServiceTests {
 
     @Test
     void testCreateWallet_UserWithNullEmail_DoesNotSendEmail() {
-        // Arrange
         String username = "testuser";
         Long userId = 1L;
 
@@ -154,12 +143,10 @@ public class WalletServiceTests {
 
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn(username);
-        when(userRepository.getUserByUsername(username)).thenReturn(mockUser);
+        when(userService.getUserByUsername(username)).thenReturn(mockUser);
 
-        // Act
         walletService.createWallet(request);
 
-        // Assert
         verify(walletRepository, times(1)).createWallet(any(Wallet.class));
         verify(emailService, never()).sendWalletCreationEmail(anyString(), anyString(), anyString(), anyString());
     }
@@ -168,7 +155,6 @@ public class WalletServiceTests {
 
     @Test
     void testDepositToWallet_Success() {
-        // Arrange
         String username = "testuser";
         Long userId = 1L;
         Long walletId = 10L;
@@ -193,14 +179,12 @@ public class WalletServiceTests {
 
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn(username);
-        when(userRepository.getUserByUsername(username)).thenReturn(mockUser);
+        when(userService.getUserByUsername(username)).thenReturn(mockUser);
         when(walletRepository.getWalletByUserId(userId)).thenReturn(mockWallet);
 
-        // Act
         walletService.depositToWallet(request);
 
-        // Assert
-        verify(walletRepository, times(1)).addFunds(depositAmount, walletId);
+        verify(walletRepository, times(1)).addFunds(depositAmount, walletId, userId);
         verify(emailService).sendEmailOnDeposit(
                 "test@example.com",
                 username,
@@ -211,25 +195,21 @@ public class WalletServiceTests {
 
     @Test
     void testDepositToWallet_UserNotAuthenticated_ThrowsException() {
-        // Arrange
         DepositRequest request = new DepositRequest(BigDecimal.valueOf(50.00));
 
         when(securityContext.getAuthentication()).thenReturn(null);
 
-        // Act & Assert
         UserNotAuthenticatedException exception = assertThrows(
                 UserNotAuthenticatedException.class,
                 () -> walletService.depositToWallet(request));
 
         assertEquals("User was not authenticated! Try logging in", exception.getMessage());
-        verify(walletRepository, never()).addFunds(any(), any());
-        verify(emailService, never()).sendEmailOnDeposit(anyString(), anyString(), anyString(), anyString(),
-                anyString());
+        verify(walletRepository, never()).addFunds(any(), any(), any());
+        verify(emailService, never()).sendEmailOnDeposit(anyString(), anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
     void testDepositToWallet_UserWithNullEmail_DoesNotSendEmail() {
-        // Arrange
         String username = "testuser";
         Long userId = 1L;
         Long walletId = 10L;
@@ -252,21 +232,17 @@ public class WalletServiceTests {
 
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn(username);
-        when(userRepository.getUserByUsername(username)).thenReturn(mockUser);
+        when(userService.getUserByUsername(username)).thenReturn(mockUser);
         when(walletRepository.getWalletByUserId(userId)).thenReturn(mockWallet);
 
-        // Act
         walletService.depositToWallet(request);
 
-        // Assert
-        verify(walletRepository, times(1)).addFunds(depositAmount, walletId);
-        verify(emailService, never()).sendEmailOnDeposit(anyString(), anyString(), anyString(), anyString(),
-                anyString());
+        verify(walletRepository, times(1)).addFunds(depositAmount, walletId, userId);
+        verify(emailService, never()).sendEmailOnDeposit(anyString(), anyString(), anyString(), anyString(), anyString());
     }
 
     @Test
     void testDepositToWallet_LargeAmount() {
-        // Arrange
         String username = "testuser";
         Long userId = 1L;
         Long walletId = 10L;
@@ -290,14 +266,12 @@ public class WalletServiceTests {
 
         when(securityContext.getAuthentication()).thenReturn(authentication);
         when(authentication.getName()).thenReturn(username);
-        when(userRepository.getUserByUsername(username)).thenReturn(mockUser);
+        when(userService.getUserByUsername(username)).thenReturn(mockUser);
         when(walletRepository.getWalletByUserId(userId)).thenReturn(mockWallet);
 
-        // Act
         walletService.depositToWallet(request);
 
-        // Assert
-        verify(walletRepository, times(1)).addFunds(depositAmount, walletId);
+        verify(walletRepository, times(1)).addFunds(depositAmount, walletId, userId);
         verify(emailService).sendEmailOnDeposit(
                 eq("test@example.com"),
                 eq(username),
