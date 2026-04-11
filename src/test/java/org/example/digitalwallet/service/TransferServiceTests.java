@@ -2,23 +2,29 @@ package org.example.digitalwallet.service;
 
 import org.example.digitalwallet.dto.TransferRequest;
 import org.example.digitalwallet.dto.TransferResponse;
+import org.example.digitalwallet.exception.RateLimitExceededException;
+import org.example.digitalwallet.exception.UserNotAuthenticatedException;
 import org.example.digitalwallet.exception.WalletNotFoundException;
 import org.example.digitalwallet.model.Transfer;
-import org.example.digitalwallet.model.Wallet;
 import org.example.digitalwallet.model.WalletCurrency;
 import org.example.digitalwallet.repository.TransferRepository;
-import org.example.digitalwallet.repository.WalletRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,35 +34,37 @@ public class TransferServiceTests {
     private TransferRepository transferRepository;
 
     @Mock
-    private WalletRepository walletRepository;
+    private WalletService walletService;
+
+    @Mock
+    private Authentication authentication;
+
+    @Mock
+    private SecurityContext securityContext;
 
     @InjectMocks
     private TransferService transferService;
 
-    private static Wallet createWallet(Long id, Long userId, BigDecimal balance) {
-        return Wallet.builder()
-                .id(id)
-                .userId(userId)
-                .currency(WalletCurrency.EUR)
-                .balance(balance)
-                .build();
-    }
+    private static final String USERNAME = "testuser";
 
-    private static TransferRequest createTransferRequest(Long from, Long to, BigDecimal amount) {
+    private static TransferRequest createRequest(Long from, Long to, BigDecimal amount) {
         return new TransferRequest(from, to, WalletCurrency.EUR, amount);
     }
 
-    // ========== Successful Transfer Tests ==========
+    @BeforeEach
+    void setUp() {
+        SecurityContextHolder.setContext(securityContext);
+        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+        lenient().when(authentication.getName()).thenReturn(USERNAME);
+    }
+
+    // ========== saveTransfer Tests ==========
 
     @Test
-    void testTransfer_Success() {
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(500.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(100.00));
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(50.00));
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(BigDecimal.valueOf(50.00), 1L)).thenReturn(true);
+    void testSaveTransfer_Success() {
+        TransferRequest request = createRequest(1L, 2L, BigDecimal.valueOf(50.00));
+        when(walletService.executeTransfer(1L, 2L, BigDecimal.valueOf(50.00), WalletCurrency.EUR, USERNAME))
+                .thenReturn(true);
 
         TransferResponse response = transferService.saveTransfer(request);
 
@@ -64,323 +72,175 @@ public class TransferServiceTests {
         assertEquals(2L, response.toWallet());
         assertEquals(BigDecimal.valueOf(50.00), response.transferAmount());
         assertNotNull(response.transferDate());
-
-        verify(walletRepository).deductFunds(BigDecimal.valueOf(50.00), 1L);
-        verify(walletRepository).addFunds(BigDecimal.valueOf(50.00), 2L);
         verify(transferRepository).save(any(Transfer.class));
     }
 
     @Test
-    void testTransfer_ExactBalance() {
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(100.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(50.00));
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(100.00));
+    void testSaveTransfer_UserNotAuthenticated_ThrowsException() {
+        when(securityContext.getAuthentication()).thenReturn(null);
+        TransferRequest request = createRequest(1L, 2L, BigDecimal.valueOf(50.00));
 
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(BigDecimal.valueOf(100.00), 1L)).thenReturn(true);
+        assertThrows(UserNotAuthenticatedException.class, () -> transferService.saveTransfer(request));
 
-        TransferResponse response = transferService.saveTransfer(request);
-
-        assertEquals(BigDecimal.valueOf(100.00), response.transferAmount());
-        verify(walletRepository).deductFunds(BigDecimal.valueOf(100.00), 1L);
-        verify(walletRepository).addFunds(BigDecimal.valueOf(100.00), 2L);
+        verify(walletService, never()).executeTransfer(any(), any(), any(), any(), any());
+        verify(transferRepository, never()).save(any());
     }
 
     @Test
-    void testTransfer_HighPrecisionAmount() {
-        BigDecimal preciseAmount = new BigDecimal("123.456789");
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(500.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(100.00));
-        TransferRequest request = createTransferRequest(1L, 2L, preciseAmount);
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(preciseAmount, 1L)).thenReturn(true);
-
-        TransferResponse response = transferService.saveTransfer(request);
-
-        assertEquals(preciseAmount, response.transferAmount());
-        verify(walletRepository).deductFunds(preciseAmount, 1L);
-        verify(walletRepository).addFunds(preciseAmount, 2L);
-    }
-
-    @Test
-    void testTransfer_LargeAmount() {
-        BigDecimal largeAmount = new BigDecimal("9999999999.99");
-        Wallet source = createWallet(1L, 100L, new BigDecimal("10000000000.00"));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.ZERO);
-        TransferRequest request = createTransferRequest(1L, 2L, largeAmount);
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(largeAmount, 1L)).thenReturn(true);
-
-        TransferResponse response = transferService.saveTransfer(request);
-
-        assertEquals(largeAmount, response.transferAmount());
-        verify(walletRepository).deductFunds(largeAmount, 1L);
-        verify(walletRepository).addFunds(largeAmount, 2L);
-    }
-
-    @Test
-    void testTransfer_InsufficientFunds_ShouldNotAddToRecipient() {
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(500.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(100.00));
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(1000.00));
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(BigDecimal.valueOf(1000.00), 1L)).thenReturn(false);
+    void testSaveTransfer_InsufficientFunds_ThrowsException() {
+        TransferRequest request = createRequest(1L, 2L, BigDecimal.valueOf(1000.00));
+        when(walletService.executeTransfer(1L, 2L, BigDecimal.valueOf(1000.00), WalletCurrency.EUR, USERNAME))
+                .thenReturn(false);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 () -> transferService.saveTransfer(request));
 
         assertEquals("Insufficient funds: wallet balance is less than transfer amount", exception.getMessage());
-        verify(walletRepository).deductFunds(BigDecimal.valueOf(1000.00), 1L);
-        verify(walletRepository, never()).addFunds(any(), any());
         verify(transferRepository, never()).save(any());
     }
 
     @Test
-    void testTransfer_BalanceOneCentLess() {
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(99.99));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(50.00));
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(100.00));
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(BigDecimal.valueOf(100.00), 1L)).thenReturn(false);
-
-        assertThrows(IllegalArgumentException.class, () -> transferService.saveTransfer(request));
-
-        verify(walletRepository, never()).addFunds(any(), any());
-        verify(transferRepository, never()).save(any());
-    }
-
-    @Test
-    void testTransfer_ZeroBalance() {
-        Wallet source = createWallet(1L, 100L, BigDecimal.ZERO);
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(100.00));
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(50.00));
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(any(), eq(1L))).thenReturn(false);
-
-        assertThrows(IllegalArgumentException.class, () -> transferService.saveTransfer(request));
-
-        verify(walletRepository, never()).addFunds(any(), any());
-    }
-
-    @Test
-    void testTransfer_SourceWalletNotFound() {
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(100.00));
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(50.00));
-
-        when(walletRepository.findById(1L)).thenReturn(null);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-
-        WalletNotFoundException exception = assertThrows(
-                WalletNotFoundException.class,
-                () -> transferService.saveTransfer(request));
-
-        assertEquals("One of the wallets wasn't found or doesnt exist", exception.getMessage());
-        verify(walletRepository, never()).deductFunds(any(), any());
-        verify(walletRepository, never()).addFunds(any(), any());
-        verify(transferRepository, never()).save(any());
-    }
-
-    @Test
-    void testTransfer_DestinationWalletNotFound() {
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(500.00));
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(50.00));
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(null);
-
-        WalletNotFoundException exception = assertThrows(
-                WalletNotFoundException.class,
-                () -> transferService.saveTransfer(request));
-
-        assertEquals("One of the wallets wasn't found or doesnt exist", exception.getMessage());
-        verify(walletRepository, never()).deductFunds(any(), any());
-        verify(walletRepository, never()).addFunds(any(), any());
-    }
-
-    @Test
-    void testTransfer_BothWalletsNotFound() {
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(50.00));
-
-        when(walletRepository.findById(1L)).thenReturn(null);
-        when(walletRepository.findById(2L)).thenReturn(null);
+    void testSaveTransfer_WalletNotFound_PropagatesException() {
+        TransferRequest request = createRequest(1L, 2L, BigDecimal.valueOf(50.00));
+        when(walletService.executeTransfer(any(), any(), any(), any(), any()))
+                .thenThrow(new WalletNotFoundException("One of the wallets wasn't found or doesn't exist"));
 
         assertThrows(WalletNotFoundException.class, () -> transferService.saveTransfer(request));
-
-        verify(walletRepository, never()).deductFunds(any(), any());
-        verify(walletRepository, never()).addFunds(any(), any());
-    }
-
-    @Test
-    void testTransfer_DeductAndAddSameAmount() {
-        BigDecimal amount = new BigDecimal("123.45");
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(500.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(100.00));
-        TransferRequest request = createTransferRequest(1L, 2L, amount);
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(amount, 1L)).thenReturn(true);
-
-        transferService.saveTransfer(request);
-
-        ArgumentCaptor<BigDecimal> deductCaptor = ArgumentCaptor.forClass(BigDecimal.class);
-        ArgumentCaptor<BigDecimal> addCaptor = ArgumentCaptor.forClass(BigDecimal.class);
-
-        verify(walletRepository).deductFunds(deductCaptor.capture(), eq(1L));
-        verify(walletRepository).addFunds(addCaptor.capture(), eq(2L));
-
-        assertEquals(deductCaptor.getValue(), addCaptor.getValue(),
-                "Deducted amount must equal added amount to prevent money loss/creation");
-    }
-
-    @Test
-    void testTransfer_RecordsCorrectAmount() {
-        BigDecimal transferAmount = BigDecimal.valueOf(75.50);
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(500.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(100.00));
-        TransferRequest request = createTransferRequest(1L, 2L, transferAmount);
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(transferAmount, 1L)).thenReturn(true);
-
-        transferService.saveTransfer(request);
-
-        ArgumentCaptor<Transfer> transferCaptor = ArgumentCaptor.forClass(Transfer.class);
-        verify(transferRepository).save(transferCaptor.capture());
-
-        Transfer savedTransfer = transferCaptor.getValue();
-        assertEquals(transferAmount, savedTransfer.getTransferAmount());
-        assertEquals(1L, savedTransfer.getFromWallet());
-        assertEquals(2L, savedTransfer.getToWallet());
-    }
-
-    @Test
-    void testTransfer_RecordCreatedOnlyOnSuccess() {
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(50.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(100.00));
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(100.00));
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(any(), eq(1L))).thenReturn(false);
-
-        assertThrows(IllegalArgumentException.class, () -> transferService.saveTransfer(request));
-
         verify(transferRepository, never()).save(any());
     }
 
     @Test
-    void testTransfer_OneCent() {
-        BigDecimal oneCent = new BigDecimal("0.01");
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(100.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(50.00));
-        TransferRequest request = createTransferRequest(1L, 2L, oneCent);
+    void testSaveTransfer_UnauthorizedWallet_PropagatesException() {
+        TransferRequest request = createRequest(1L, 2L, BigDecimal.valueOf(50.00));
+        when(walletService.executeTransfer(any(), any(), any(), any(), any()))
+                .thenThrow(new SecurityException("You don't have permission to transfer from this wallet"));
 
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(oneCent, 1L)).thenReturn(true);
-
-        TransferResponse response = transferService.saveTransfer(request);
-
-        assertEquals(oneCent, response.transferAmount());
-        verify(walletRepository).deductFunds(oneCent, 1L);
-        verify(walletRepository).addFunds(oneCent, 2L);
+        assertThrows(SecurityException.class, () -> transferService.saveTransfer(request));
+        verify(transferRepository, never()).save(any());
     }
 
     @Test
-    void testTransfer_PreserveScale() {
-        BigDecimal amount = new BigDecimal("100.00");
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(500.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(100.00));
-        TransferRequest request = createTransferRequest(1L, 2L, amount);
+    void testSaveTransfer_CurrencyMismatch_PropagatesException() {
+        TransferRequest request = createRequest(1L, 2L, BigDecimal.valueOf(50.00));
+        when(walletService.executeTransfer(any(), any(), any(), any(), any()))
+                .thenThrow(new IllegalArgumentException("Currency mismatch: source wallet currency does not match transfer currency"));
 
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(amount, 1L)).thenReturn(true);
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> transferService.saveTransfer(request));
+
+        assertTrue(ex.getMessage().contains("Currency mismatch"));
+        verify(transferRepository, never()).save(any());
+    }
+
+    @Test
+    void testSaveTransfer_RecordsCorrectData() {
+        BigDecimal amount = BigDecimal.valueOf(75.50);
+        TransferRequest request = createRequest(1L, 2L, amount);
+        when(walletService.executeTransfer(1L, 2L, amount, WalletCurrency.EUR, USERNAME)).thenReturn(true);
 
         transferService.saveTransfer(request);
 
-        ArgumentCaptor<BigDecimal> captor = ArgumentCaptor.forClass(BigDecimal.class);
-        verify(walletRepository).addFunds(captor.capture(), eq(2L));
+        ArgumentCaptor<Transfer> captor = ArgumentCaptor.forClass(Transfer.class);
+        verify(transferRepository).save(captor.capture());
 
-        assertEquals(amount.scale(), captor.getValue().scale(),
-                "Scale should be preserved to avoid rounding issues");
+        Transfer saved = captor.getValue();
+        assertEquals(1L, saved.getFromWallet());
+        assertEquals(2L, saved.getToWallet());
+        assertEquals(amount, saved.getTransferAmount());
+        assertEquals(WalletCurrency.EUR, saved.getCurrency());
+        assertNotNull(saved.getTransferDate());
     }
 
     @Test
-    void testTransfer_ManyDecimalPlaces() {
-        BigDecimal preciseAmount = new BigDecimal("0.123456789012345");
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(100.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(50.00));
-        TransferRequest request = createTransferRequest(1L, 2L, preciseAmount);
+    void testSaveTransfer_TransferNotSavedOnFailure() {
+        TransferRequest request = createRequest(1L, 2L, BigDecimal.valueOf(100.00));
+        when(walletService.executeTransfer(any(), any(), any(), any(), any())).thenReturn(false);
 
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(preciseAmount, 1L)).thenReturn(true);
-
-        TransferResponse response = transferService.saveTransfer(request);
-
-        assertEquals(preciseAmount, response.transferAmount());
+        assertThrows(IllegalArgumentException.class, () -> transferService.saveTransfer(request));
+        verify(transferRepository, never()).save(any());
     }
 
     @Test
-    void testTransfer_SameWallet_IsAllowed() {
-        Wallet wallet = createWallet(1L, 100L, BigDecimal.valueOf(500.00));
-        TransferRequest request = createTransferRequest(1L, 1L, BigDecimal.valueOf(50.00));
-
-        when(walletRepository.findById(1L)).thenReturn(wallet);
-        when(walletRepository.deductFunds(any(), eq(1L))).thenReturn(true);
-
-        TransferResponse response = transferService.saveTransfer(request);
-
-        assertNotNull(response);
-        assertEquals(1L, response.fromWallet());
-        assertEquals(1L, response.toWallet());
-    }
-
-    @Test
-    void testTransfer_DeductBeforeAdd() {
-        Wallet source = createWallet(1L, 100L, BigDecimal.valueOf(500.00));
-        Wallet destination = createWallet(2L, 200L, BigDecimal.valueOf(100.00));
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(50.00));
-
-        when(walletRepository.findById(1L)).thenReturn(source);
-        when(walletRepository.findById(2L)).thenReturn(destination);
-        when(walletRepository.deductFunds(any(), eq(1L))).thenReturn(true);
+    void testSaveTransfer_ExecuteCalledBeforeSave() {
+        TransferRequest request = createRequest(1L, 2L, BigDecimal.valueOf(50.00));
+        when(walletService.executeTransfer(any(), any(), any(), any(), any())).thenReturn(true);
 
         transferService.saveTransfer(request);
 
-        var inOrder = inOrder(walletRepository, transferRepository);
-        inOrder.verify(walletRepository).findById(1L);
-        inOrder.verify(walletRepository).findById(2L);
-        inOrder.verify(walletRepository).deductFunds(any(), eq(1L));
-        inOrder.verify(walletRepository).addFunds(any(), eq(2L));
+        var inOrder = inOrder(walletService, transferRepository);
+        inOrder.verify(walletService).executeTransfer(any(), any(), any(), any(), any());
         inOrder.verify(transferRepository).save(any());
     }
 
     @Test
-    void testTransfer_ValidateBeforeMovement() {
-        TransferRequest request = createTransferRequest(1L, 2L, BigDecimal.valueOf(50.00));
+    void testSaveTransfer_OneCent() {
+        BigDecimal oneCent = new BigDecimal("0.01");
+        TransferRequest request = createRequest(1L, 2L, oneCent);
+        when(walletService.executeTransfer(1L, 2L, oneCent, WalletCurrency.EUR, USERNAME)).thenReturn(true);
 
-        when(walletRepository.findById(1L)).thenReturn(null);
-        when(walletRepository.findById(2L)).thenReturn(createWallet(2L, 200L, BigDecimal.valueOf(100.00)));
+        TransferResponse response = transferService.saveTransfer(request);
 
-        assertThrows(WalletNotFoundException.class, () -> transferService.saveTransfer(request));
+        assertEquals(oneCent, response.transferAmount());
+    }
 
-        verify(walletRepository, never()).deductFunds(any(), any());
-        verify(walletRepository, never()).addFunds(any(), any());
+    @Test
+    void testSaveTransfer_LargeAmount() {
+        BigDecimal largeAmount = new BigDecimal("9999999999.99");
+        TransferRequest request = createRequest(1L, 2L, largeAmount);
+        when(walletService.executeTransfer(1L, 2L, largeAmount, WalletCurrency.EUR, USERNAME)).thenReturn(true);
+
+        TransferResponse response = transferService.saveTransfer(request);
+
+        assertEquals(largeAmount, response.transferAmount());
+    }
+
+    @Test
+    void testSaveTransfer_SameWallet() {
+        TransferRequest request = createRequest(1L, 1L, BigDecimal.valueOf(50.00));
+        when(walletService.executeTransfer(1L, 1L, BigDecimal.valueOf(50.00), WalletCurrency.EUR, USERNAME))
+                .thenReturn(true);
+
+        TransferResponse response = transferService.saveTransfer(request);
+
+        assertEquals(1L, response.fromWallet());
+        assertEquals(1L, response.toWallet());
+    }
+
+    // ========== getTransferHistory Tests ==========
+
+    @Test
+    void testGetTransferHistory_ReturnsResults() {
+        Transfer t = Transfer.builder()
+                .id(1L).fromWallet(1L).toWallet(2L)
+                .currency(WalletCurrency.EUR)
+                .transferAmount(BigDecimal.valueOf(50.00))
+                .transferDate(java.time.LocalDateTime.now())
+                .build();
+        when(transferRepository.findTransfers(null, 10)).thenReturn(List.of(t));
+
+        List<TransferResponse> results = transferService.getTransferHistory(null, 10);
+
+        assertEquals(1, results.size());
+        assertEquals(1L, results.getFirst().fromWallet());
+    }
+
+    @Test
+    void testGetTransferHistory_EmptyList_ReturnsEmpty() {
+        when(transferRepository.findTransfers(null, 10)).thenReturn(List.of());
+
+        List<TransferResponse> results = transferService.getTransferHistory(null, 10);
+
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    void testGetTransferHistory_WithCursor() {
+        when(transferRepository.findTransfers(5L, 10)).thenReturn(List.of());
+
+        transferService.getTransferHistory(5L, 10);
+
+        verify(transferRepository).findTransfers(5L, 10);
     }
 }

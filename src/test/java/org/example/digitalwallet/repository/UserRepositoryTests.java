@@ -124,8 +124,7 @@ public class UserRepositoryTests {
     }
 
     @Test
-    void testSaveUser_WithNullEmail() {
-        // Arrange
+    void testSaveUser_WithNullEmail_ThrowsException() {
         User user = User.builder()
                 .email(null)
                 .username("noemailuser")
@@ -133,16 +132,7 @@ public class UserRepositoryTests {
                 .membershipStatus(MembershipStatus.FREE)
                 .build();
 
-        // Act
-        userRepository.saveUser(user);
-
-        // Assert
-        String email = jdbcTemplate.queryForObject(
-                "SELECT email FROM users WHERE username = ?",
-                String.class,
-                "noemailuser"
-        );
-        assertNull(email);
+        assertThrows(Exception.class, () -> userRepository.saveUser(user));
     }
 
     // ========== Get User By Username Tests ==========
@@ -156,7 +146,7 @@ public class UserRepositoryTests {
         );
 
         // Act
-        User user = userRepository.getUserByUsername("existinguser");
+        User user = userRepository.getUserByUsername("existinguser").orElse(null);
 
         // Assert
         assertNotNull(user);
@@ -169,10 +159,8 @@ public class UserRepositoryTests {
     @Test
     void testGetUserByUsername_UserDoesNotExist() {
         // Act
-        User user = userRepository.getUserByUsername("nonexistentuser");
-
         // Assert
-        assertNull(user);
+        assertTrue(userRepository.getUserByUsername("nonexistentuser").isEmpty());
     }
 
     @Test
@@ -184,7 +172,7 @@ public class UserRepositoryTests {
         );
 
         // Act
-        User user = userRepository.getUserByUsername("premiumuser");
+        User user = userRepository.getUserByUsername("premiumuser").orElse(null);
 
         // Assert
         assertNotNull(user);
@@ -200,7 +188,7 @@ public class UserRepositoryTests {
         );
 
         // Act
-        User user = userRepository.getUserByUsername("ultrauser");
+        User user = userRepository.getUserByUsername("ultrauser").orElse(null);
 
         // Assert
         assertNotNull(user);
@@ -216,7 +204,7 @@ public class UserRepositoryTests {
         );
 
         // Act
-        User user = userRepository.getUserByUsername("verifyuser");
+        User user = userRepository.getUserByUsername("verifyuser").orElse(null);
 
         // Assert
         assertNotNull(user);
@@ -228,20 +216,12 @@ public class UserRepositoryTests {
     }
 
     @Test
-    void testGetUserByUsername_WithNullEmail() {
-        // Arrange
-        jdbcTemplate.update(
-                "INSERT INTO users (email, username, password, subscription_status) VALUES (?, ?, ?, ?)",
-                null, "noemailuser", "password", "FREE"
-        );
-
-        // Act
-        User user = userRepository.getUserByUsername("noemailuser");
-
-        // Assert
-        assertNotNull(user);
-        assertNull(user.getEmail());
-        assertEquals("noemailuser", user.getUsername());
+    void testGetUserByUsername_WithNullEmail_CannotInsert() {
+        assertThrows(Exception.class, () ->
+                jdbcTemplate.update(
+                        "INSERT INTO users (email, username, password, subscription_status) VALUES (?, ?, ?, ?)",
+                        null, "noemailuser", "password", "FREE"
+                ));
     }
 
     // ========== Get User ID By Name Tests ==========

@@ -20,6 +20,8 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -54,7 +56,7 @@ public class UserServiceTests {
         // Arrange
         UserRequest request = new UserRequest("newuser@example.com", "newuser", "password123", MembershipStatus.FREE);
 
-        when(userRepository.getUserByUsername("newuser")).thenReturn(null);
+        when(userRepository.getUserByUsername("newuser")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
 
         // Act
@@ -79,7 +81,7 @@ public class UserServiceTests {
         UserRequest request = new UserRequest("premium@example.com", "premiumuser", "securepass",
                 MembershipStatus.PREMIUM);
 
-        when(userRepository.getUserByUsername("premiumuser")).thenReturn(null);
+        when(userRepository.getUserByUsername("premiumuser")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("securepass")).thenReturn("encodedSecurePass");
 
         // Act
@@ -98,7 +100,7 @@ public class UserServiceTests {
         // Arrange
         UserRequest request = new UserRequest("ultra@example.com", "ultrauser", "ultrapass", MembershipStatus.ULTRA);
 
-        when(userRepository.getUserByUsername("ultrauser")).thenReturn(null);
+        when(userRepository.getUserByUsername("ultrauser")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("ultrapass")).thenReturn("encodedUltraPass");
 
         // Act
@@ -123,7 +125,7 @@ public class UserServiceTests {
                 .email("existing@example.com")
                 .build();
 
-        when(userRepository.getUserByUsername("existinguser")).thenReturn(existingUser);
+        when(userRepository.getUserByUsername("existinguser")).thenReturn(Optional.of(existingUser));
 
         // Act & Assert
         UserAlreadyExistsException exception = assertThrows(
@@ -143,7 +145,7 @@ public class UserServiceTests {
 
         UserRequest request = new UserRequest("test@example.com", "testuser", plainPassword, MembershipStatus.FREE);
 
-        when(userRepository.getUserByUsername("testuser")).thenReturn(null);
+        when(userRepository.getUserByUsername("testuser")).thenReturn(Optional.empty());
         when(passwordEncoder.encode(plainPassword)).thenReturn(encodedPassword);
 
         // Act
@@ -165,7 +167,7 @@ public class UserServiceTests {
         // Arrange
         UserRequest request = new UserRequest(null, "userwithoutemail", "password123", MembershipStatus.FREE);
 
-        when(userRepository.getUserByUsername("userwithoutemail")).thenReturn(null);
+        when(userRepository.getUserByUsername("userwithoutemail")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("password123")).thenReturn("encodedPassword");
 
         // Act
